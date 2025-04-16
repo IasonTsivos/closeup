@@ -6,6 +6,7 @@ import {
   Dimensions,
   TouchableOpacity,
   Text,
+  Platform,
 } from "react-native";
 import * as Location from "expo-location";
 import MapViewWrapper from "../components/mvw/MapViewWrapper";
@@ -13,39 +14,114 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNavBar from "@/components/BottomNavBar";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, getDocs, onSnapshot } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import getUserId from "./utils/userId";
+import { getUserId } from "./utils/userId";
+import NearbyPeopleList from "./NearbyPeopleList";
+
+type UserLocation = {
+  id: string;
+  latitude: number;
+  longitude: number;
+  distance?: number;
+};
+
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export default function MapScreen() {
   const navigation = useNavigation();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [loading, setLoading] = useState(true);
+  const [nearbyPeople, setNearbyPeople] = useState<UserLocation[]>([]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
-    const startLocationFlow = async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        alert("Permission to access location was denied ❌");
-        return;
-      }
-
+    const fetchNearbyPeople = async () => {
       try {
-        const id = await getUserId();
+        const currentLoc = await Location.getCurrentPositionAsync({});
+        const userId = await getUserId();
 
-        // Get initial location for map
+        const snapshot = await getDocs(collection(db, "liveLocations"));
+        const people: UserLocation[] = [];
+
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (
+            data.latitude &&
+            data.longitude &&
+            docSnap.id !== userId // exclude self
+          ) {
+            people.push({
+              id: docSnap.id,
+              latitude: data.latitude,
+              longitude: data.longitude,
+              distance: getDistance(
+                currentLoc.coords.latitude,
+                currentLoc.coords.longitude,
+                data.latitude,
+                data.longitude
+              ),
+            });
+          }
+        });
+
+        const sorted = people.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
+        setNearbyPeople(sorted);
+      } catch (err) {
+        console.error("Error fetching nearby people:", err);
+      }
+    };
+
+    const startLocationFlow = async () => {
+      try {
+        const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+        if (fgStatus !== "granted") {
+          alert("Foreground location permission is required.");
+          return;
+        }
+
+        if (Platform.OS !== "web") {
+          try {
+            const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+            if (bgStatus !== "granted") {
+              console.warn("Background location not granted.");
+            }
+          } catch (bgErr) {
+            console.warn("Background location permission not supported:", bgErr);
+          }
+        }
+
+        const id = await getUserId();
         const initialLoc = await Location.getCurrentPositionAsync({});
         setLocation(initialLoc);
         setLoading(false);
 
-        // Start periodic updates to Firestore
+        // Save location
+        await setDoc(
+          doc(db, "liveLocations", id),
+          {
+            latitude: initialLoc.coords.latitude,
+            longitude: initialLoc.coords.longitude,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        // Update every 90 seconds
         interval = setInterval(async () => {
           try {
             const loc = await Location.getCurrentPositionAsync({});
-            console.log("Current location:", loc.coords);
-
             await setDoc(
               doc(db, "liveLocations", id),
               {
@@ -55,14 +131,18 @@ export default function MapScreen() {
               },
               { merge: true }
             );
-
-            console.log("Location updated in Firestore ✅");
-          } catch (error) {
-            console.error("Error updating location:", error);
+            console.log("Location updated ✅");
+          } catch (err) {
+            console.error("Error updating location:", err);
           }
-        }, 90000); // every 90 seconds
-      } catch (error) {
-        console.error("Error in location update flow:", error);
+        }, 90000);
+
+        // Fetch and subscribe to nearby updates
+        await fetchNearbyPeople();
+        onSnapshot(collection(db, "liveLocations"), fetchNearbyPeople);
+      } catch (err) {
+        console.error("Error starting location flow:", err);
+        setLoading(false);
       }
     };
 
@@ -83,6 +163,7 @@ export default function MapScreen() {
         <MapViewWrapper
           latitude={location.coords.latitude}
           longitude={location.coords.longitude}
+          users={nearbyPeople}
         />
 
         <Text style={styles.appTitle}>CloseUp</Text>
@@ -93,16 +174,13 @@ export default function MapScreen() {
       </View>
 
       <SafeAreaView style={styles.bottomContent} edges={["bottom"]}>
-        {/* Add any bottom content here */}
+        <NearbyPeopleList people={nearbyPeople} />
       </SafeAreaView>
 
       <BottomNavBar />
     </View>
   );
 }
-
-
-
 
 const { height } = Dimensions.get("window");
 
