@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, Image } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 type Props = {
@@ -18,8 +18,17 @@ export default function MapViewWrapper({ latitude, longitude }: Props) {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         }}
+        showsUserLocation={false}
+        showsMyLocationButton={false}
       >
-        <Marker coordinate={{ latitude, longitude }} title="You" />
+        <Marker coordinate={{ latitude, longitude }}>
+          <View style={styles.customMarker}>
+            <Image
+              source={require("../../assets/avatar.png")} // replace this with your actual avatar asset
+              style={styles.avatar}
+            />
+          </View>
+        </Marker>
       </MapView>
     </View>
   );
@@ -29,8 +38,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     overflow: "hidden",
-    borderColor: "#FF0000",
-    borderWidth: 4,
+  },
+  customMarker: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 25,
+    padding: 4,
+    borderWidth: 2,
+    borderColor: "#101010",
+  },
+  avatar: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
   },
 });

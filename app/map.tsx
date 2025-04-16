@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, ActivityIndicator, Dimensions, TouchableOpacity, Text } from "react-native";
+import { View, StyleSheet, ActivityIndicator, Dimensions, TouchableOpacity } from "react-native";
 import * as Location from "expo-location";
 import MapViewWrapper from "../components/mvw/MapViewWrapper";
 import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons"; // optional for an icon-style back button
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function MapScreen() {
   const navigation = useNavigation();
@@ -30,6 +31,7 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Map fills the top of the screen including the notch */}
       <View style={styles.mapContainer}>
         <MapViewWrapper
           latitude={location.coords.latitude}
@@ -40,9 +42,10 @@ export default function MapScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.bottomContent}>
-        {/* Add additional UI here */}
-      </View>
+      {/* Bottom content sits nicely in the safe area */}
+      <SafeAreaView style={styles.bottomContent} edges={["bottom"]}>
+        {/* You can add other content here */}
+      </SafeAreaView>
     </View>
   );
 }
@@ -56,19 +59,20 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     height: height * 0.6,
-    position: "relative", // allows absolutely positioned elements inside
+    position: "relative",
   },
   backButton: {
     position: "absolute",
-    top: 20,
+    top: 50, // push it lower to clear the notch
     left: 15,
-    backgroundColor: "#FF0000",
+    backgroundColor: "#CCFF33",
     padding: 10,
     borderRadius: 20,
+    zIndex: 10,
   },
   bottomContent: {
     flex: 1,
     padding: 10,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#101010",
   },
 });

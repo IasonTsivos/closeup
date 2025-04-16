@@ -1,20 +1,21 @@
-import { Text, View, StyleSheet, Pressable } from "react-native";
+import { Text, StyleSheet, Pressable } from "react-native";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 
 export default function Index() {
   const router = useRouter();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <Text style={styles.title}>👋 Welcome to CloseUp</Text>
       <Text style={styles.subtitle}>Start exploring nearby people on the map.</Text>
 
       <Pressable style={styles.button} onPress={() => router.push("/map")}>
         <Text style={styles.buttonText}>Open Map</Text>
       </Pressable>
-
-    </View>
+      
+    </SafeAreaView>
   );
 }
 
@@ -39,7 +40,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   button: {
-    backgroundColor: "#FF0000",
+    backgroundColor: "#CCFF33",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
