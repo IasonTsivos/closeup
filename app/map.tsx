@@ -44,44 +44,43 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [nearbyPeople, setNearbyPeople] = useState<UserLocation[]>([]);
 
+  
+  const fetchNearbyPeople = async () => {
+    try {
+      const currentLoc = await Location.getCurrentPositionAsync({});
+      const userId = await getUserId();
+  
+      const snapshot = await getDocs(collection(db, "liveLocations"));
+      const people: UserLocation[] = [];
+  
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.latitude && data.longitude && docSnap.id !== userId) {
+          people.push({
+            id: docSnap.id,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            distance: getDistance(
+              currentLoc.coords.latitude,
+              currentLoc.coords.longitude,
+              data.latitude,
+              data.longitude
+            ),
+          });
+        }
+      });
+  
+      const sorted = people.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
+      setNearbyPeople(sorted); // Make sure this triggers a re-render
+    } catch (err) {
+      console.error("Error fetching nearby people:", err);
+    }
+  };
+  
+
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
-
-    const fetchNearbyPeople = async () => {
-      try {
-        const currentLoc = await Location.getCurrentPositionAsync({});
-        const userId = await getUserId();
-
-        const snapshot = await getDocs(collection(db, "liveLocations"));
-        const people: UserLocation[] = [];
-
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (
-            data.latitude &&
-            data.longitude &&
-            docSnap.id !== userId // exclude self
-          ) {
-            people.push({
-              id: docSnap.id,
-              latitude: data.latitude,
-              longitude: data.longitude,
-              distance: getDistance(
-                currentLoc.coords.latitude,
-                currentLoc.coords.longitude,
-                data.latitude,
-                data.longitude
-              ),
-            });
-          }
-        });
-
-        const sorted = people.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
-        setNearbyPeople(sorted);
-      } catch (err) {
-        console.error("Error fetching nearby people:", err);
-      }
-    };
 
     const startLocationFlow = async () => {
       try {
@@ -160,12 +159,13 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.mapContainer}>
-        <MapViewWrapper
-          latitude={location.coords.latitude}
-          longitude={location.coords.longitude}
-          users={nearbyPeople}
-        />
-
+      <MapViewWrapper
+        key={nearbyPeople.map(p => p.id).join(",")} // Re-render on list change
+        latitude={location.coords.latitude}
+        longitude={location.coords.longitude}
+        users={nearbyPeople}
+      />
+    
         <Text style={styles.appTitle}>CloseUp</Text>
 
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -222,3 +222,4 @@ const styles = StyleSheet.create({
     backgroundColor: "#101010",
   },
 });
+

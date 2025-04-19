@@ -15,16 +15,19 @@ const storage = {
   },
 };
 
+let cachedUserId: string | null = null;
+
 export async function getUserId(): Promise<string> {
+  if (cachedUserId) return cachedUserId;
+
   let id = await storage.getItem("userId");
 
   if (!id) {
     id = Math.random().toString(36).substring(2, 10);
     await storage.setItem("userId", id);
-    console.log("New user ID created:", id);
-  } else {
-    console.log("Using stored user ID:", id);
+    console.log("✅ New user ID created:", id);
   }
 
-  return id;
+  cachedUserId = id!;
+  return cachedUserId;
 }

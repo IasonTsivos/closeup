@@ -2,17 +2,24 @@ import React from "react";
 import { StyleSheet, View, Image } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
-type Props = {
+type User = {
+  id: string;
   latitude: number;
   longitude: number;
 };
 
-export default function MapViewWrapper({ latitude, longitude }: Props) {
+type Props = {
+  latitude: number;
+  longitude: number;
+  users?: User[]; 
+};
+
+export default function MapViewWrapper({ latitude, longitude, users = [] }: Props) {
   return (
     <View style={styles.container}>
       <MapView
         style={StyleSheet.absoluteFillObject}
-        initialRegion={{
+        region={{
           latitude,
           longitude,
           latitudeDelta: 0.01,
@@ -24,11 +31,20 @@ export default function MapViewWrapper({ latitude, longitude }: Props) {
         <Marker coordinate={{ latitude, longitude }}>
           <View style={styles.customMarker}>
             <Image
-              source={require("../../assets/avatar.png")} // replace this with your actual avatar asset
+              source={require("../../assets/avatar.png")}
               style={styles.avatar}
             />
           </View>
         </Marker>
+
+        {users.map((user) => (
+          <Marker
+            key={user.id}
+            coordinate={{ latitude: user.latitude, longitude: user.longitude }}
+            title={`User: ${user.id}`}
+            pinColor="blue"
+          />
+        ))}
       </MapView>
     </View>
   );

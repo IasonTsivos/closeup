@@ -1,32 +1,49 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 
-type Props = {
+type User = {
+  id: string;
   latitude: number;
   longitude: number;
 };
 
-export default function MapViewWrapper({ latitude, longitude }: Props) {
-  const mapSrc = `https://www.google.com/maps/embed/v1/view?key=AIzaSyBueh9hZSgolOPjNT3kFpjOz9HHnYvnjxw&center=${latitude},${longitude}&zoom=15`;
+type Props = {
+  latitude: number;
+  longitude: number;
+  users?: User[];
+};
 
-  return (
-    <View style={styles.webContainer}>
-      <iframe
-        src={mapSrc}
-        width="100%"
-        height="100%"
-        style={{ border: 0 }}
-        allowFullScreen
-        loading="lazy"
-      />
-    </View>
+const containerStyle = {
+  width: "100%",
+  height: "100%",
+};
+
+export default function MapViewWrapper({ latitude, longitude, users = [] }: Props) {
+  const { isLoaded } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: "AIzaSyBueh9hZSgolOPjNT3kFpjOz9HHnYvnjxw", // Replace with ENV var later!
+  });
+
+  const center = {
+    lat: latitude,
+    lng: longitude,
+  };
+
+  return isLoaded ? (
+    <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={15}>
+      {/* Your location */}
+      <Marker position={center} label="You" />
+
+      {/* Nearby users */}
+      {users.map((user) => (
+        <Marker
+          key={user.id}
+          position={{ lat: user.latitude, lng: user.longitude }}
+          label={user.id[0].toUpperCase()}
+        />
+      ))}
+    </GoogleMap>
+  ) : (
+    <div>Loading map...</div>
   );
 }
-
-const styles = StyleSheet.create({
-  webContainer: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
-});

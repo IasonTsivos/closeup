@@ -21,7 +21,7 @@ export default function MapViewWrapper({
     <View style={styles.mapContainer}>
       <MapView
         style={StyleSheet.absoluteFill}
-        initialRegion={{
+        region={{
           latitude,
           longitude,
           latitudeDelta: 0.01,
