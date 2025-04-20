@@ -12,10 +12,12 @@ export default function MapViewWrapper({
   latitude,
   longitude,
   users = [],
+  onUserSelect, // Added prop to handle user selection
 }: {
   latitude: number;
   longitude: number;
   users?: User[];
+  onUserSelect?: (user: User) => void; // Type for the function prop
 }) {
   return (
     <View style={styles.mapContainer}>
@@ -43,6 +45,7 @@ export default function MapViewWrapper({
             coordinate={{ latitude: user.latitude, longitude: user.longitude }}
             title={`User: ${user.id}`}
             pinColor="blue"
+            onPress={() => onUserSelect && onUserSelect(user)} // Handle user selection
           />
         ))}
       </MapView>

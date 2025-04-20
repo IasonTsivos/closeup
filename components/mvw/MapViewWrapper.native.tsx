@@ -11,10 +11,11 @@ type User = {
 type Props = {
   latitude: number;
   longitude: number;
-  users?: User[]; 
+  users?: User[];
+  onUserSelect?: (user: User) => void; // Add this line
 };
 
-export default function MapViewWrapper({ latitude, longitude, users = [] }: Props) {
+export default function MapViewWrapper({ latitude, longitude, users = [], onUserSelect }: Props) {
   return (
     <View style={styles.container}>
       <MapView
@@ -43,6 +44,7 @@ export default function MapViewWrapper({ latitude, longitude, users = [] }: Prop
             coordinate={{ latitude: user.latitude, longitude: user.longitude }}
             title={`User: ${user.id}`}
             pinColor="blue"
+            onPress={() => onUserSelect?.(user)} // Add this line
           />
         ))}
       </MapView>

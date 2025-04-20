@@ -26,14 +26,16 @@ type UserLocation = {
   distance?: number;
 };
 
-function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const toRad = (value: number) => (value * Math.PI) / 180;
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -43,41 +45,40 @@ export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [loading, setLoading] = useState(true);
   const [nearbyPeople, setNearbyPeople] = useState<UserLocation[]>([]);
+  const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null);
 
-  
   const fetchNearbyPeople = async () => {
     try {
       const currentLoc = await Location.getCurrentPositionAsync({});
       const userId = await getUserId();
-  
+
       const snapshot = await getDocs(collection(db, "liveLocations"));
       const people: UserLocation[] = [];
-  
+
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.latitude && data.longitude && docSnap.id !== userId) {
+          const distance = getDistanceFromLatLonInKm(
+            currentLoc.coords.latitude,
+            currentLoc.coords.longitude,
+            data.latitude,
+            data.longitude
+          );
+
           people.push({
             id: docSnap.id,
             latitude: data.latitude,
             longitude: data.longitude,
-            distance: getDistance(
-              currentLoc.coords.latitude,
-              currentLoc.coords.longitude,
-              data.latitude,
-              data.longitude
-            ),
+            distance,
           });
         }
       });
-  
-      const sorted = people.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
-      setNearbyPeople(sorted); // Make sure this triggers a re-render
+
+      setNearbyPeople(people);
     } catch (err) {
       console.error("Error fetching nearby people:", err);
     }
   };
-  
-
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -106,7 +107,6 @@ export default function MapScreen() {
         setLocation(initialLoc);
         setLoading(false);
 
-        // Save location
         await setDoc(
           doc(db, "liveLocations", id),
           {
@@ -117,7 +117,6 @@ export default function MapScreen() {
           { merge: true }
         );
 
-        // Update every 90 seconds
         interval = setInterval(async () => {
           try {
             const loc = await Location.getCurrentPositionAsync({});
@@ -136,7 +135,6 @@ export default function MapScreen() {
           }
         }, 90000);
 
-        // Fetch and subscribe to nearby updates
         await fetchNearbyPeople();
         onSnapshot(collection(db, "liveLocations"), fetchNearbyPeople);
       } catch (err) {
@@ -156,25 +154,41 @@ export default function MapScreen() {
     return <ActivityIndicator size="large" style={{ flex: 1, backgroundColor: "#505050" }} />;
   }
 
+  const handleUserSelect = (user: UserLocation) => {
+    setSelectedUser(user);
+  };
+
+  const handleBackToList = () => {
+    setSelectedUser(null);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.mapContainer}>
-      <MapViewWrapper
-        key={nearbyPeople.map(p => p.id).join(",")} // Re-render on list change
-        latitude={location.coords.latitude}
-        longitude={location.coords.longitude}
-        users={nearbyPeople}
-      />
-    
+        <MapViewWrapper
+          key={nearbyPeople.map((p) => p.id).join(",")}
+          latitude={location.coords.latitude}
+          longitude={location.coords.longitude}
+          users={nearbyPeople}
+          onUserSelect={setSelectedUser}
+        />
         <Text style={styles.appTitle}>CloseUp</Text>
-
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#303030" />
         </TouchableOpacity>
       </View>
 
       <SafeAreaView style={styles.bottomContent} edges={["bottom"]}>
-        <NearbyPeopleList people={nearbyPeople} />
+        {selectedUser ? (
+          <View style={styles.selectedUserDetails}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBackToList}>
+              <Ionicons name="arrow-back" size={24} color="#303030" />
+            </TouchableOpacity>
+            <Text style={styles.userName}>{selectedUser.id}</Text>
+          </View>
+        ) : (
+          <NearbyPeopleList people={nearbyPeople} onUserSelect={handleUserSelect} />
+        )}
       </SafeAreaView>
 
       <BottomNavBar />
@@ -221,5 +235,17 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: "#101010",
   },
+  selectedUserDetails: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#202020",
+    padding: 20,
+    borderRadius: 10,
+  },
+  userName: {
+    color: "#CCFF33",
+    fontSize: 24,
+    fontWeight: "bold",
+  },
 });
-

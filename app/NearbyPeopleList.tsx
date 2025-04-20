@@ -1,14 +1,19 @@
 import React from "react";
-import { View, Text, FlatList, StyleSheet } from "react-native";
+import { View, Text, FlatList, StyleSheet, TouchableOpacity } from "react-native";
 
-type UserLocation = {
+type User = {
   id: string;
   latitude: number;
   longitude: number;
   distance?: number;
 };
 
-export default function NearbyPeopleList({ people }: { people: UserLocation[] }) {
+type Props = {
+  people: User[];
+  onUserSelect: (user: User) => void;
+};
+
+export default function NearbyPeopleList({ people, onUserSelect }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>Nearby People</Text>
@@ -20,21 +25,21 @@ export default function NearbyPeopleList({ people }: { people: UserLocation[] })
           data={people}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={styles.personBox}>
+            <TouchableOpacity style={styles.personBox} onPress={() => onUserSelect(item)}>
               <View style={styles.row}>
                 <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {item.id.charAt(0).toUpperCase()}
-                  </Text>
+                  <Text style={styles.avatarText}>{item.id.charAt(0).toUpperCase()}</Text>
                 </View>
                 <View>
                   <Text style={styles.name}>{item.id}</Text>
                   <Text style={styles.distance}>
-                    {item.distance?.toFixed(2)} km away
+                    {item.distance !== undefined
+                      ? `${item.distance.toFixed(2)} km away`
+                      : "Distance unknown"}
                   </Text>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
         />
       )}
