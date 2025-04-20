@@ -14,9 +14,9 @@ export default function BottomNavBar() {
         <Text style={styles.label}>Map</Text>
       </TouchableOpacity>
       
-      <TouchableOpacity onPress={() => router.push("../index")} style={styles.tab}>
-        <Ionicons name="home-outline" size={24} color={pathname === "/index" ? "#CCFF33" : "white"} />
-        <Text style={styles.label}>Home</Text>
+      <TouchableOpacity onPress={() => router.push("../profile")} style={styles.tab}>
+        <Ionicons name="person-outline" size={24} color={pathname === "/profile" ? "#CCFF33" : "white"} />
+        <Text style={styles.label}>Profile</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.push("../index")} style={styles.tab}>
@@ -43,7 +43,9 @@ const styles = StyleSheet.create({
   },
   tab: {
     alignItems: "center",
-  },
+    justifyContent: "center",
+    width: 60,
+  }  ,
   label: {
     color: "white",
     fontSize: 12,
