@@ -65,20 +65,20 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       {/* Back button */}
       <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-        <Ionicons name="arrow-back" size={24} color="303030" />
+        <Ionicons name="arrow-back" size={24} color="#303030" />
       </TouchableOpacity>
 
-      <Text style={styles.title}>Your Profile</Text>
+      <Text style={styles.title}>Profile</Text>
 
       <TextInput
         style={styles.input}
         placeholder="Enter your name"
+        placeholderTextColor="#999"
         value={name}
-        placeholderTextColor="#888"
         onChangeText={setName}
       />
 
-      <Text style={styles.subTitle}>Choose Your Interests</Text>
+      <Text style={styles.subTitle}>Select Interests</Text>
 
       <ScrollView contentContainerStyle={styles.interestsWrapper}>
         {INTERESTS.map(({ label, icon }) => {
@@ -89,18 +89,21 @@ export default function ProfileScreen() {
               onPress={() => toggleInterest(label)}
               style={[
                 styles.pill,
-                {
-                  backgroundColor: isActive ? "#CCFF33" : "#EDEDED",
-                },
+                { backgroundColor: isActive ? "#CCFF33" : "#333" },
               ]}
             >
               <Ionicons
                 name={icon as any}
                 size={16}
-                color={isActive ? "#101010" : "#555"}
+                color={isActive ? "#101010" : "#ccc"}
                 style={{ marginRight: 6 }}
               />
-              <Text style={[styles.pillText, { color: isActive ? "#101010" : "#555" }]}>
+              <Text
+                style={[
+                  styles.pillText,
+                  { color: isActive ? "#101010" : "#ccc" },
+                ]}
+              >
                 {label}
               </Text>
             </TouchableOpacity>
@@ -118,7 +121,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#484848",
+    backgroundColor: "#101010",
     padding: 20,
   },
   backBtn: {
@@ -134,22 +137,22 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     color: "#CCFF33",
-    marginBottom: 20,
     alignSelf: "center",
     marginTop: 60,
+    marginBottom: 20,
   },
   input: {
-    backgroundColor: "#EDEDED",
+    backgroundColor: "#202020",
     padding: 12,
     borderRadius: 10,
-    color: "#000",
-    marginBottom: 20,
+    color: "#fff",
     fontSize: 16,
+    marginBottom: 20,
   },
   subTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#CCFF33",
+    color: "#fff",
     marginBottom: 10,
   },
   interestsWrapper: {
