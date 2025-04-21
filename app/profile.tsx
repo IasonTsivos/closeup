@@ -28,167 +28,186 @@ const INTERESTS = [
 ];
 
 export default function ProfileScreen() {
-    const [profileViews, setProfileViews] = useState<number>(0);
-    const router = useRouter();
-    const [name, setName] = useState("");
-    const [selected, setSelected] = useState<string[]>([]);
-  
-    useEffect(() => {
-      const load = async () => {
-        const userId = await getUserId();
-        const docSnap = await getDoc(doc(db, "users", userId));
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.name) setName(data.name);
-          if (data.interests) setSelected(data.interests);
-          if (data.profileViews !== undefined) setProfileViews(data.profileViews);
-        }        
-      };
-      load();
-    }, []);
-  
-    const toggleInterest = (label: string) => {
-      setSelected((prev) =>
-        prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
-      );
-    };
-  
-    const saveProfile = async () => {
+  const [profileViews, setProfileViews] = useState<number>(0);
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
       const userId = await getUserId();
-      await setDoc(
-        doc(db, "users", userId),
-        { name, interests: selected },
-        { merge: true }
-      );
-      Alert.alert("Saved", "Your profile has been updated.");
+      const docSnap = await getDoc(doc(db, "users", userId));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.name) setName(data.name);
+        if (data.interests) setSelected(data.interests);
+        if (data.profileViews !== undefined) setProfileViews(data.profileViews);
+      }
     };
-  
-    return (
-      <SafeAreaView style={styles.container}>
-        {/* Back button */}
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#303030" />
-        </TouchableOpacity>
-  
-        <View style={styles.titleWrapper}>
-          <Ionicons name="sparkles-outline" size={24} color="#CCFF33" />
-          <Text style={styles.title}>Profile</Text>
-        </View>
-  
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your name"
-          placeholderTextColor="#999"
-          value={name}
-          onChangeText={setName}
-        />
-  
-        <Text style={styles.subTitle}>Select Interests</Text>
-  
-        <ScrollView contentContainerStyle={styles.interestsWrapper}>
-          {INTERESTS.map(({ label, icon }) => {
-            const isActive = selected.includes(label);
-            return (
-              <TouchableOpacity
-                key={label}
-                onPress={() => toggleInterest(label)}
-                style={[
-                  styles.pill,
-                  { backgroundColor: isActive ? "#CCFF33" : "#333" },
-                ]}
-              >
-                <Ionicons
-                  name={icon as any}
-                  size={16}
-                  color={isActive ? "#101010" : "#ccc"}
-                  style={{ marginRight: 6 }}
-                />
-                <Text
-                  style={[styles.pillText, { color: isActive ? "#101010" : "#ccc" }]}
-                >
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-  
-        <TouchableOpacity onPress={saveProfile} style={styles.saveBtn}>
-          <Text style={styles.saveBtnText}>Save</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+    load();
+  }, []);
+
+  const toggleInterest = (label: string) => {
+    setSelected((prev) =>
+      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
     );
-  }
-  
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: "#101010",
-      padding: 20,
-    },
-    backBtn: {
-      position: "absolute",
-      top: 50,
-      left: 15,
-      backgroundColor: "#CCFF33",
-      padding: 10,
-      borderRadius: 20,
-      zIndex: 10,
-    },
-    titleWrapper: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      marginTop: 60,
-      marginBottom: 20,
-    },
-    title: {
-      fontSize: 28,
-      fontWeight: "bold",
-      color: "#CCFF33",
-      marginLeft: 8,
-    },
-    input: {
-      backgroundColor: "#202020",
-      padding: 12,
-      borderRadius: 10,
-      color: "#fff",
-      fontSize: 16,
-      marginBottom: 20,
-    },
-    subTitle: {
-      fontSize: 16,
-      fontWeight: "bold",
-      color: "#fff",
-      marginBottom: 10,
-    },
-    interestsWrapper: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 10,
-    },
-    pill: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: 8,
-      paddingHorizontal: 14,
-      borderRadius: 20,
-      margin: 4,
-    },
-    pillText: {
-      fontSize: 14,
-    },
-    saveBtn: {
-      backgroundColor: "#CCFF33",
-      paddingVertical: 14,
-      borderRadius: 12,
-      alignItems: "center",
-      marginTop: 30,
-    },
-    saveBtnText: {
-      fontWeight: "bold",
-      fontSize: 16,
-      color: "#101010",
-    },
-  });
-  
+  };
+
+  const saveProfile = async () => {
+    const userId = await getUserId();
+    await setDoc(
+      doc(db, "users", userId),
+      { name, interests: selected },
+      { merge: true }
+    );
+    Alert.alert("Saved", "Your profile has been updated.");
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Back button */}
+      <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <Ionicons name="arrow-back" size={24} color="#303030" />
+      </TouchableOpacity>
+
+      <View style={styles.titleWrapper}>
+        <Ionicons name="sparkles-outline" size={24} color="#CCFF33" />
+        <Text style={styles.title}>Profile</Text>
+      </View>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Enter your name"
+        placeholderTextColor="#999"
+        value={name}
+        onChangeText={setName}
+      />
+
+      <Text style={styles.subTitle}>Select Interests</Text>
+
+      <ScrollView contentContainerStyle={styles.interestsWrapper}>
+        {INTERESTS.map(({ label, icon }) => {
+          const isActive = selected.includes(label);
+          return (
+            <TouchableOpacity
+              key={label}
+              onPress={() => toggleInterest(label)}
+              style={[
+                styles.pill,
+                { backgroundColor: isActive ? "#CCFF33" : "#333" },
+              ]}
+            >
+              <Ionicons
+                name={icon as any}
+                size={16}
+                color={isActive ? "#101010" : "#ccc"}
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[styles.pillText, { color: isActive ? "#101010" : "#ccc" }]}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      <View style={styles.profileViewsContainer}>
+        <Ionicons name="eye-outline" size={25} color="#CCFF33" />
+        <Text style={styles.profileViewsText}>
+          {profileViews || 0}
+        </Text>
+      </View>
+
+      <TouchableOpacity onPress={saveProfile} style={styles.saveBtn}>
+        <Text style={styles.saveBtnText}>Save</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#101010",
+    padding: 20,
+  },
+  backBtn: {
+    position: "absolute",
+    top: 50,
+    left: 15,
+    backgroundColor: "#CCFF33",
+    padding: 10,
+    borderRadius: 20,
+    zIndex: 10,
+  },
+  titleWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 60,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#CCFF33",
+    marginLeft: 8,
+  },
+  input: {
+    backgroundColor: "#202020",
+    padding: 12,
+    borderRadius: 10,
+    color: "#fff",
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  subTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 10,
+  },
+  interestsWrapper: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    margin: 4,
+  },
+  pillText: {
+    fontSize: 14,
+  },
+  saveBtn: {
+    backgroundColor: "#CCFF33",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 30,
+  },
+  saveBtnText: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#101010",
+  },
+  profileViewsContainer: {  // Fix to bottom
+    bottom: 20,            // Adjust position from bottom
+    left: 0,
+    right: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  profileViewsText: {
+    color: "#CCFF33",  // Green color for the text
+    marginLeft: 5,
+    fontSize: 18,
+  },
+});
