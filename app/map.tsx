@@ -14,7 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNavBar from "@/components/BottomNavBar";
-import { doc, setDoc, serverTimestamp, collection, getDocs, onSnapshot } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { getUserId } from "./utils/userId";
 import NearbyPeopleList from "./NearbyPeopleList";
@@ -27,7 +27,7 @@ type UserLocation = {
 };
 
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
+  const R = 6371; // Radius of Earth in km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
@@ -46,7 +46,12 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [nearbyPeople, setNearbyPeople] = useState<UserLocation[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null);
+  const [selectedUserData, setSelectedUserData] = useState<any | null>(null); // User's profile data
+  const [fetchingUserData, setFetchingUserData] = useState<boolean>(false);
+  const [profileViews, setProfileViews] = useState<number>(0);
 
+
+  // Fetch nearby people (location data)
   const fetchNearbyPeople = async () => {
     try {
       const currentLoc = await Location.getCurrentPositionAsync({});
@@ -79,6 +84,37 @@ export default function MapScreen() {
       console.error("Error fetching nearby people:", err);
     }
   };
+
+  // Fetch selected user's data (name, interests, etc.)
+  const fetchSelectedUserData = async (userId: string) => {
+    setFetchingUserData(true);
+    try {
+      const userRef = doc(db, "users", userId);
+      const docSnap = await getDoc(userRef);
+  
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (typeof data.profileViews === "number") setProfileViews(data.profileViews); // 👈 add this
+      
+  
+        // Increment profile views
+        const currentViews = data.profileViews || 0;
+        await setDoc(
+          userRef,
+          { profileViews: currentViews + 1 },
+          { merge: true }
+        );
+  
+        setSelectedUserData({ ...data, profileViews: currentViews + 1 });
+      } else {
+        console.error("User not found");
+      }
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+    }
+    setFetchingUserData(false);
+  };
+  
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -150,17 +186,21 @@ export default function MapScreen() {
     };
   }, []);
 
+  // Handle user selection from the list
+  const handleUserSelect = (user: UserLocation) => {
+    setSelectedUser(user);
+    fetchSelectedUserData(user.id); // Fetch the selected user's profile data
+  };
+
+  // Handle back to list action
+  const handleBackToList = () => {
+    setSelectedUser(null);
+    setSelectedUserData(null); // Clear selected user data when going back to list
+  };
+
   if (loading || !location) {
     return <ActivityIndicator size="large" style={{ flex: 1, backgroundColor: "#505050" }} />;
   }
-
-  const handleUserSelect = (user: UserLocation) => {
-    setSelectedUser(user);
-  };
-
-  const handleBackToList = () => {
-    setSelectedUser(null);
-  };
 
   return (
     <View style={styles.container}>
@@ -170,7 +210,7 @@ export default function MapScreen() {
           latitude={location.coords.latitude}
           longitude={location.coords.longitude}
           users={nearbyPeople}
-          onUserSelect={setSelectedUser}
+          onUserSelect={handleUserSelect}
         />
         <Text style={styles.appTitle}>CloseUp</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -181,10 +221,28 @@ export default function MapScreen() {
       <SafeAreaView style={styles.bottomContent} edges={["bottom"]}>
         {selectedUser ? (
           <View style={styles.selectedUserDetails}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBackToList}>
+            <View style={styles.viewsCounter}>
+              <Ionicons name="eye-outline" size={20} color="#CCFF33" />
+              <Text style={styles.viewsText}>{profileViews}</Text>
+            </View>
+            <TouchableOpacity style={styles.backButton2} onPress={handleBackToList}>
               <Ionicons name="arrow-back" size={24} color="#303030" />
             </TouchableOpacity>
-            <Text style={styles.userName}>{selectedUser.id}</Text>
+            {fetchingUserData ? (
+              <ActivityIndicator size="large" color="#CCFF33" />
+            ) : (
+              <View style={styles.userDetails}>
+                <Text style={styles.userName}>{selectedUserData?.name || "Unknown User"}</Text>
+                <Text style={styles.userInterestsTitle}>Interests:</Text>
+                <View style={styles.userInterests}>
+                  {selectedUserData?.interests?.map((interest: string, index: number) => (
+                    <View key={index} style={styles.interestPill}>
+                      <Text style={styles.interestText}>{interest}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
         ) : (
           <NearbyPeopleList people={nearbyPeople} onUserSelect={handleUserSelect} />
@@ -210,6 +268,15 @@ const styles = StyleSheet.create({
   backButton: {
     position: "absolute",
     top: 50,
+    left: 15,
+    backgroundColor: "#CCFF33",
+    padding: 10,
+    borderRadius: 20,
+    zIndex: 10,
+  },
+  backButton2: {
+    position: "absolute",
+    top: 10,
     left: 15,
     backgroundColor: "#CCFF33",
     padding: 10,
@@ -243,9 +310,53 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
   },
+  userDetails: {
+    alignItems: "center",
+  },
   userName: {
     color: "#CCFF33",
     fontSize: 24,
     fontWeight: "bold",
   },
+  userInterestsTitle: {
+    color: "#fff",
+    fontSize: 18,
+    marginTop: 15,
+    fontWeight: "bold",
+  },
+  userInterests: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 10,
+    justifyContent: "center",
+  },
+  interestPill: {
+    backgroundColor: "#303030",
+    borderRadius: 15,
+    padding: 8,
+    margin: 5,
+  },
+  interestText: {
+    color: "#CCFF33",
+  },
+  viewsCounter: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#202020",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    zIndex: 10,
+  },
+  
+  viewsText: {
+    color: "#CCFF33",
+    fontWeight: "bold",
+    marginLeft: 6,
+    fontSize: 14,
+  },
+  
 });

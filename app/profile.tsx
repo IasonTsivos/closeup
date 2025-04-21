@@ -28,6 +28,7 @@ const INTERESTS = [
 ];
 
 export default function ProfileScreen() {
+    const [profileViews, setProfileViews] = useState<number>(0);
     const router = useRouter();
     const [name, setName] = useState("");
     const [selected, setSelected] = useState<string[]>([]);
@@ -40,7 +41,8 @@ export default function ProfileScreen() {
           const data = docSnap.data();
           if (data.name) setName(data.name);
           if (data.interests) setSelected(data.interests);
-        }
+          if (data.profileViews !== undefined) setProfileViews(data.profileViews);
+        }        
       };
       load();
     }, []);
