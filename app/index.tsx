@@ -10,7 +10,7 @@ export default function Index() {
     // Use LinearGradient instead of SafeAreaView for the background
     <LinearGradient 
       colors={['#303030', '#888']} // Gradient colors
-      locations={[0.1, 1]} // The first color will take up 20% of the space, the second will take the rest
+      locations={[0.1, 1]} 
       style={styles.container} 
       start={[0, 0]} 
       end={[1, 1]} // Gradient direction: top-left to bottom-right

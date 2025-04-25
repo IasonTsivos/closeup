@@ -60,8 +60,9 @@ export default function ProfileScreen() {
       { name, interests: selected },
       { merge: true }
     );
-    Alert.alert("Saved", "Your profile has been updated.");
+    router.push("/map"); // 👈 Navigate to map screen
   };
+  
 
   return (
     <SafeAreaView style={styles.container}>

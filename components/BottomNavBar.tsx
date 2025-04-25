@@ -19,8 +19,8 @@ export default function BottomNavBar() {
         <Text style={styles.label}>Profile</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push("../index")} style={styles.tab}>
-        <Ionicons name="settings-outline" size={24} color={pathname === "/index" ? "#CCFF33" : "white"} />
+      <TouchableOpacity onPress={() => router.push("../settings")} style={styles.tab}>
+        <Ionicons name="settings-outline" size={24} color={pathname === "/settings" ? "#CCFF33" : "white"} />
         <Text style={styles.label}>Settings</Text>
       </TouchableOpacity>
 
