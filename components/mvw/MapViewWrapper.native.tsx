@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View, Image } from "react-native";
+import { StyleSheet, View, Text, Image } from "react-native";
 import MapView, { Marker, Circle } from "react-native-maps";
 
 type User = {
@@ -52,8 +52,8 @@ export default function MapViewWrapper({ latitude, longitude, users = [], onUser
         region={{
           latitude,
           longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
+          latitudeDelta: 0.01, // Adjust the zoom level if necessary
+          longitudeDelta: 0.01, // Adjust the zoom level if necessary
         }}
         showsUserLocation={false}
         showsMyLocationButton={false}
@@ -62,8 +62,8 @@ export default function MapViewWrapper({ latitude, longitude, users = [], onUser
         <Circle
           center={{ latitude, longitude }}
           radius={RADIUS_METERS}
-          strokeColor="rgba(0, 122, 255, 0.4)"
-          fillColor="rgba(0, 122, 255, 0.1)"
+          strokeColor="rgb(0, 166, 255)"
+          fillColor="rgba(0, 123, 255, 0.25)"
         />
 
         {/* Your avatar */}
@@ -77,7 +77,7 @@ export default function MapViewWrapper({ latitude, longitude, users = [], onUser
           </View>
         </Marker>
 
-        {/* Nearby users (within radius) */}
+        {/* Nearby users (custom pins with the starting letter) */}
         {nearbyUsers.map(user => (
           <Marker
             key={user.id}
@@ -85,7 +85,12 @@ export default function MapViewWrapper({ latitude, longitude, users = [], onUser
             title={`User: ${user.id}`}
             pinColor="blue"
             onPress={() => onUserSelect?.(user)}
-          />
+            zIndex={1} // Ensure the nearby pins are above the map
+          >
+            <View style={[styles.customPin, styles.nearbyPin]}>
+              <Text style={styles.pinText}>{user.id.charAt(0).toUpperCase()}</Text>
+            </View>
+          </Marker>
         ))}
 
         {/* Distant users (render heat markers) */}
@@ -123,5 +128,23 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+  },
+  customPin: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#3388FF", // Blue background for the custom pin
+    borderWidth: 2,
+    borderColor: "#fff", // White border for the pin
+  },
+  pinText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 18,
+  },
+  nearbyPin: {
+    backgroundColor: "#3388FF", // Change this color if needed
   },
 });

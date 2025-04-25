@@ -14,15 +14,18 @@ type Props = {
 };
 
 export default function NearbyPeopleList({ people, onUserSelect }: Props) {
+  // Filter users within 500 meters (0.5 km)
+  const nearbyPeople = people.filter(user => user.distance !== undefined && user.distance <= 0.5);
+
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>Nearby People</Text>
 
-      {people.length === 0 ? (
+      {nearbyPeople.length === 0 ? (
         <Text style={styles.noPeopleText}>No nearby users found.</Text>
       ) : (
         <FlatList
-          data={people}
+          data={nearbyPeople}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.personBox} onPress={() => onUserSelect(item)}>
@@ -34,7 +37,7 @@ export default function NearbyPeopleList({ people, onUserSelect }: Props) {
                   <Text style={styles.name}>{item.id}</Text>
                   <Text style={styles.distance}>
                     {item.distance !== undefined
-                      ? `${item.distance.toFixed(2)} km away`
+                      ? `${(item.distance * 1000).toFixed(0)} meters away`
                       : "Distance unknown"}
                   </Text>
                 </View>
