@@ -137,14 +137,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "#3388FF", // Blue background for the custom pin
     borderWidth: 2,
-    borderColor: "#fff", // White border for the pin
+    borderColor: "#CCFF33", // White border for the pin
   },
   pinText: {
-    color: "#fff",
+    color: "#CCFF33",
     fontWeight: "bold",
     fontSize: 18,
   },
   nearbyPin: {
-    backgroundColor: "#3388FF", // Change this color if needed
+    backgroundColor: "#303030", // Change this color if needed
   },
 });
