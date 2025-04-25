@@ -18,13 +18,10 @@ import { doc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, getDoc }
 import { db } from "../firebaseConfig";
 import { getUserId } from "./utils/userId";
 import NearbyPeopleList from "./NearbyPeopleList";
+import { fetchNearbyUsers, UserLocation } from "./utils/fetchNearbyUsers"; 
+import { styles } from "./utils/MapScreen.styles"; // adjust path as needed
 
-type UserLocation = {
-  id: string;
-  latitude: number;
-  longitude: number;
-  distance?: number;
-};
+
 
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Radius of Earth in km
@@ -51,39 +48,16 @@ export default function MapScreen() {
   const [profileViews, setProfileViews] = useState<number>(0);
 
 
-  // Fetch nearby people (location data)
+
   const fetchNearbyPeople = async () => {
     try {
-      const currentLoc = await Location.getCurrentPositionAsync({});
-      const userId = await getUserId();
-
-      const snapshot = await getDocs(collection(db, "liveLocations"));
-      const people: UserLocation[] = [];
-
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        if (data.latitude && data.longitude && docSnap.id !== userId) {
-          const distance = getDistanceFromLatLonInKm(
-            currentLoc.coords.latitude,
-            currentLoc.coords.longitude,
-            data.latitude,
-            data.longitude
-          );
-
-          people.push({
-            id: docSnap.id,
-            latitude: data.latitude,
-            longitude: data.longitude,
-            distance,
-          });
-        }
-      });
-
+      const people = await fetchNearbyUsers();
       setNearbyPeople(people);
     } catch (err) {
-      console.error("Error fetching nearby people:", err);
+      console.error("Error fetching nearby users:", err);
     }
   };
+  
 
   // Fetch selected user's data (name, interests, etc.)
   const fetchSelectedUserData = async (userId: string) => {
@@ -256,107 +230,3 @@ export default function MapScreen() {
 
 const { height } = Dimensions.get("window");
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-  },
-  mapContainer: {
-    height: height * 0.6,
-    position: "relative",
-  },
-  backButton: {
-    position: "absolute",
-    top: 50,
-    left: 15,
-    backgroundColor: "#CCFF33",
-    padding: 10,
-    borderRadius: 20,
-    zIndex: 10,
-  },
-  backButton2: {
-    position: "absolute",
-    top: 10,
-    left: 15,
-    backgroundColor: "#CCFF33",
-    padding: 10,
-    borderRadius: 20,
-    zIndex: 10,
-  },
-  appTitle: {
-    position: "absolute",
-    top: 60,
-    left: 0,
-    right: 0,
-    textAlign: "center",
-    fontSize: 25,
-    fontWeight: "bold",
-    color: "#CCFF33",
-    zIndex: 10,
-    textShadowColor: "#000",
-    textShadowOffset: { width: 3, height: 3 },
-    textShadowRadius: 3,
-  },
-  bottomContent: {
-    flex: 1,
-    padding: 10,
-    backgroundColor: "#101010",
-  },
-  selectedUserDetails: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#202020",
-    padding: 20,
-    borderRadius: 10,
-  },
-  userDetails: {
-    alignItems: "center",
-  },
-  userName: {
-    color: "#CCFF33",
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  userInterestsTitle: {
-    color: "#fff",
-    fontSize: 18,
-    marginTop: 15,
-    fontWeight: "bold",
-  },
-  userInterests: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 10,
-    justifyContent: "center",
-  },
-  interestPill: {
-    backgroundColor: "#303030",
-    borderRadius: 15,
-    padding: 8,
-    margin: 5,
-  },
-  interestText: {
-    color: "#CCFF33",
-  },
-  viewsCounter: {
-    position: "absolute",
-    top: 20,
-    right: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#202020",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    zIndex: 10,
-  },
-  
-  viewsText: {
-    color: "#CCFF33",
-    fontWeight: "bold",
-    marginLeft: 6,
-    fontSize: 14,
-  },
-  
-});

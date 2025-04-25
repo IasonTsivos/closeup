@@ -1,6 +1,7 @@
 import React from "react";
 import { Platform, View, StyleSheet } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, Circle } from "react-native-maps";
+import { getDistance } from "./location"; // adjust path
 
 type User = {
   id: string;
@@ -12,13 +13,24 @@ export default function MapViewWrapper({
   latitude,
   longitude,
   users = [],
-  onUserSelect, // Added prop to handle user selection
+  onUserSelect,
 }: {
   latitude: number;
   longitude: number;
   users?: User[];
-  onUserSelect?: (user: User) => void; // Type for the function prop
+  onUserSelect?: (user: User) => void;
 }) {
+  const NEARBY_RADIUS = 500;
+
+  const nearbyUsers = users.filter(
+    (user) =>
+      getDistance(latitude, longitude, user.latitude, user.longitude) <= NEARBY_RADIUS
+  );
+  const distantUsers = users.filter(
+    (user) =>
+      getDistance(latitude, longitude, user.latitude, user.longitude) > NEARBY_RADIUS
+  );
+
   return (
     <View style={styles.mapContainer}>
       <MapView
@@ -39,13 +51,23 @@ export default function MapViewWrapper({
           title="You"
         />
 
-        {users.map((user) => (
+        {nearbyUsers.map((user) => (
           <Marker
             key={user.id}
             coordinate={{ latitude: user.latitude, longitude: user.longitude }}
             title={`User: ${user.id}`}
             pinColor="blue"
-            onPress={() => onUserSelect && onUserSelect(user)} // Handle user selection
+            onPress={() => onUserSelect?.(user)}
+          />
+        ))}
+
+        {distantUsers.map((user) => (
+          <Circle
+            key={`zone-${user.id}`}
+            center={{ latitude: user.latitude, longitude: user.longitude }}
+            radius={100}
+            strokeColor="rgba(255,0,0,0.3)"
+            fillColor="rgba(255,0,0,0.1)"
           />
         ))}
       </MapView>
