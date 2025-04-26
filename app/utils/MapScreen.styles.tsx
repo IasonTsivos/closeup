@@ -2,11 +2,40 @@
 import { StyleSheet, Dimensions } from "react-native";
 
 const { height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F5",
+  },
+  atSymbol: {
+    fontSize: 18,
+    fontWeight: "bold", // ✅ allowed
+    color: "#fff",
+    marginRight: 4,
+  },
+  instagramBadge: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    borderRadius: 8,
+    alignSelf: "center" as const,
+    width: width * 0.9, // ✅ use number not "90%"
+    marginBottom: 12,
+  },
+
+  username: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: "bold" as "bold", // ✅ cast it properly
+    color: "#fff",
+    textAlign: "center" as const,
   },
   mapContainer: {
     height: height * 0.6,

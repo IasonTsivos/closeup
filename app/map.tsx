@@ -14,14 +14,13 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNavBar from "@/components/BottomNavBar";
-import { doc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, getDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, onSnapshot, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { getUserId } from "./utils/userId";
 import NearbyPeopleList from "./NearbyPeopleList";
 import { fetchNearbyUsers, UserLocation } from "./utils/fetchNearbyUsers"; 
-import { styles } from "./utils/MapScreen.styles"; // adjust path as needed
-
-
+import { styles as externalStyles } from "./utils/MapScreen.styles"; // your other styles
+import { LinearGradient } from 'expo-linear-gradient';
 
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Radius of Earth in km
@@ -43,11 +42,9 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [nearbyPeople, setNearbyPeople] = useState<UserLocation[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null);
-  const [selectedUserData, setSelectedUserData] = useState<any | null>(null); // User's profile data
+  const [selectedUserData, setSelectedUserData] = useState<any | null>(null);
   const [fetchingUserData, setFetchingUserData] = useState<boolean>(false);
   const [profileViews, setProfileViews] = useState<number>(0);
-
-
 
   const fetchNearbyPeople = async () => {
     try {
@@ -57,9 +54,7 @@ export default function MapScreen() {
       console.error("Error fetching nearby users:", err);
     }
   };
-  
 
-  // Fetch selected user's data (name, interests, etc.)
   const fetchSelectedUserData = async (userId: string) => {
     setFetchingUserData(true);
     try {
@@ -68,10 +63,7 @@ export default function MapScreen() {
   
       if (docSnap.exists()) {
         const data = docSnap.data();
-        if (typeof data.profileViews === "number") setProfileViews(data.profileViews); // 👈 add this
-      
-  
-        // Increment profile views
+        if (typeof data.profileViews === "number") setProfileViews(data.profileViews);
         const currentViews = data.profileViews || 0;
         await setDoc(
           userRef,
@@ -88,7 +80,6 @@ export default function MapScreen() {
     }
     setFetchingUserData(false);
   };
-  
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -160,16 +151,14 @@ export default function MapScreen() {
     };
   }, []);
 
-  // Handle user selection from the list
   const handleUserSelect = (user: UserLocation) => {
     setSelectedUser(user);
-    fetchSelectedUserData(user.id); // Fetch the selected user's profile data
+    fetchSelectedUserData(user.id);
   };
 
-  // Handle back to list action
   const handleBackToList = () => {
     setSelectedUser(null);
-    setSelectedUserData(null); // Clear selected user data when going back to list
+    setSelectedUserData(null);
   };
 
   if (loading || !location) {
@@ -205,8 +194,31 @@ export default function MapScreen() {
             {fetchingUserData ? (
               <ActivityIndicator size="large" color="#CCFF33" />
             ) : (
-              <View style={styles.userDetails}>
-                <Text style={styles.userName}>{selectedUserData?.name || "Unknown User"}</Text>
+            <View style={styles.userDetails}>
+                <LinearGradient
+                  colors={[
+                    "rgba(255, 214, 0, 0.8)",  // "#ffd600" but 60% opacity
+                    "rgba(230, 104, 60, 0.8)", // "#e6683c"
+                    "rgba(220, 39, 67, 0.8)",  // "#dc2743"
+                    "rgba(211, 0, 197, 0.8)",  // "#d300c5"
+                    "rgba(118, 56, 250, 0.8)", // "#7638fa"
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.instagramBadge}
+                >
+
+                <Ionicons name="logo-instagram" size={28} color="#fff" style={{ marginRight: 8 }} />
+
+                <Text style={styles.username}>
+                  @{selectedUserData?.name || "Unknown User"}
+                </Text>
+
+                <TouchableOpacity onPress={handleBackToList}>
+                  <Ionicons name="exit-outline" size={24} color="#fff" style={{ marginLeft: 8 }} />
+                </TouchableOpacity>
+              </LinearGradient>
+
                 <Text style={styles.userInterestsTitle}>Interests:</Text>
                 <View style={styles.userInterests}>
                   {selectedUserData?.interests?.map((interest: string, index: number) => (
@@ -228,5 +240,9 @@ export default function MapScreen() {
   );
 }
 
-const { height } = Dimensions.get("window");
 
+// Merge your original styles + new ones here:
+const styles = {
+  ...externalStyles,
+
+};
