@@ -21,6 +21,7 @@ import NearbyPeopleList from "./NearbyPeopleList";
 import { fetchNearbyUsers, UserLocation } from "./utils/fetchNearbyUsers"; 
 import { styles as externalStyles } from "./utils/MapScreen.styles"; // your other styles
 import { LinearGradient } from 'expo-linear-gradient';
+import { Linking } from 'react-native';
 
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Radius of Earth in km
@@ -45,6 +46,13 @@ export default function MapScreen() {
   const [selectedUserData, setSelectedUserData] = useState<any | null>(null);
   const [fetchingUserData, setFetchingUserData] = useState<boolean>(false);
   const [profileViews, setProfileViews] = useState<number>(0);
+
+  const handleExitButtonPress = (username: string) => {
+    const instagramUrl = `https://www.instagram.com/${username}/`; 
+    Linking.openURL(instagramUrl).catch((err) => {
+      console.error("Error opening Instagram:", err);
+    });
+  };
 
   const fetchNearbyPeople = async () => {
     try {
@@ -214,7 +222,7 @@ export default function MapScreen() {
                   @{selectedUserData?.name || "Unknown User"}
                 </Text>
 
-                <TouchableOpacity onPress={handleBackToList}>
+                <TouchableOpacity onPress={() => handleExitButtonPress(selectedUserData?.name)}>
                   <Ionicons name="exit-outline" size={24} color="#fff" style={{ marginLeft: 8 }} />
                 </TouchableOpacity>
               </LinearGradient>

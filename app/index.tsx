@@ -95,7 +95,7 @@ export default function Index() {
           style={styles.button}
           onPress={() => router.push("/map")}
         >
-          <Text style={styles.buttonText}>Continue to Map</Text>
+          <Text style={styles.buttonText}>View Map</Text>
         </Pressable>
       )}
     </LinearGradient>
