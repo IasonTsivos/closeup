@@ -91,7 +91,7 @@ export default function MapScreen() {
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-
+  
     const startLocationFlow = async () => {
       try {
         const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
@@ -99,7 +99,7 @@ export default function MapScreen() {
           alert("Foreground location permission is required.");
           return;
         }
-
+  
         if (Platform.OS !== "web") {
           try {
             const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
@@ -110,12 +110,12 @@ export default function MapScreen() {
             console.warn("Background location permission not supported:", bgErr);
           }
         }
-
+  
         const id = await getUserId();
         const initialLoc = await Location.getCurrentPositionAsync({});
         setLocation(initialLoc);
         setLoading(false);
-
+  
         await setDoc(
           doc(db, "liveLocations", id),
           {
@@ -125,7 +125,7 @@ export default function MapScreen() {
           },
           { merge: true }
         );
-
+  
         interval = setInterval(async () => {
           try {
             const loc = await Location.getCurrentPositionAsync({});
@@ -143,21 +143,25 @@ export default function MapScreen() {
             console.error("Error updating location:", err);
           }
         }, 90000);
-
-        await fetchNearbyPeople();
+  
+        // Fetch nearby users here, after the location has been set
+        await fetchNearbyPeople();  // Ensure you fetch after setting location
+  
+        // Listen to location updates in real-time
         onSnapshot(collection(db, "liveLocations"), fetchNearbyPeople);
       } catch (err) {
         console.error("Error starting location flow:", err);
         setLoading(false);
       }
     };
-
+  
     startLocationFlow();
-
+  
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, []);
+  }, []); // Empty array means this runs once on mount
+  
 
   const handleUserSelect = (user: UserLocation) => {
     setSelectedUser(user);
@@ -169,15 +173,14 @@ export default function MapScreen() {
     setSelectedUserData(null);
   };
 
-  if (loading || !location) {
+  if (loading || !location || nearbyPeople.length === 0) {
     return <ActivityIndicator size="large" style={{ flex: 1, backgroundColor: "#505050" }} />;
-  }
+  }  
 
   return (
     <View style={styles.container}>
       <View style={styles.mapContainer}>
         <MapViewWrapper
-          key={nearbyPeople.map((p) => p.id).join(",")}
           latitude={location.coords.latitude}
           longitude={location.coords.longitude}
           users={nearbyPeople}

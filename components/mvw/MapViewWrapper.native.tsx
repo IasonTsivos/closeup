@@ -49,7 +49,7 @@ export default function MapViewWrapper({ latitude, longitude, users = [], onUser
     <View style={styles.container}>
       <MapView
         style={StyleSheet.absoluteFillObject}
-        region={{
+        initialRegion={{
           latitude,
           longitude,
           latitudeDelta: 0.01, // Adjust the zoom level if necessary
