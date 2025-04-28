@@ -10,7 +10,7 @@ export default function BottomNavBar() {
   return (
     <View style={styles.navBar}>
       <TouchableOpacity onPress={() => router.push("/map")} style={styles.tab}>
-        <Ionicons name="navigate" size={24} color={pathname === "/map" ? "#CCFF33" : "white"} />
+        <Ionicons name="location-sharp" size={24} color={pathname === "/map" ? "#CCFF33" : "white"} />
         <Text style={styles.label}>Map</Text>
       </TouchableOpacity>
       

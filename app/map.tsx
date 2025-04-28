@@ -223,7 +223,7 @@ export default function MapScreen() {
                 </Text>
 
                 <TouchableOpacity onPress={() => handleExitButtonPress(selectedUserData?.name)}>
-                  <Ionicons name="exit-outline" size={24} color="#fff" style={{ marginLeft: 8 }} />
+                  <Ionicons name="open-outline" size={24} color="#fff" style={{ marginLeft: 8 }} />
                 </TouchableOpacity>
               </LinearGradient>
 
