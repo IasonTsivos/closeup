@@ -19,73 +19,49 @@ export default function NearbyPeopleList({ people, onUserSelect }: Props) {
   const opacity = useRef(new Animated.Value(1)).current;
 
   const nearbyPeople = people.filter(user => user.distance !== undefined && user.distance <= 0.5);
+  const heatzonePeople = people.filter(user => user.distance !== undefined && user.distance > 0.5);
 
   const handleTabSwitch = (tab: "nearby" | "heatzones") => {
     Animated.sequence([
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
+      Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }),
     ]).start();
     setActiveTab(tab);
   };
 
   return (
     <View style={styles.container}>
+      
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
-          style={[
-            styles.tabButton,
-            styles.leftTab,
-            activeTab === "nearby" && styles.activeNearbyTab
-          ]}
+          style={[styles.tabButton, activeTab === "nearby" && styles.activeNearbyTab]}
           onPress={() => handleTabSwitch("nearby")}
         >
           <Ionicons
             name="people-outline"
             size={18}
             color={activeTab === "nearby" ? "#202020" : "#fff"}
-            style={{ marginRight: 6 }}
+            style={styles.icon}
           />
-          <Text style={[
-            styles.tabText,
-            activeTab === "nearby" && styles.activeNearbyTabText
-          ]}>
-            People
-          </Text>
+          <Text style={[styles.tabText, activeTab === "nearby" && styles.activeNearbyTabText]}>People</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[
-            styles.tabButton,
-            styles.rightTab,
-            activeTab === "heatzones" && styles.activeHeatzoneTab
-          ]}
+          style={[styles.tabButton, activeTab === "heatzones" && styles.activeHeatzoneTab]}
           onPress={() => handleTabSwitch("heatzones")}
         >
           <Ionicons
             name="flame-outline"
             size={18}
             color={activeTab === "heatzones" ? "#202020" : "#fff"}
-            style={{ marginRight: 6 }}
+            style={styles.icon}
           />
-          <Text style={[
-            styles.tabText,
-            activeTab === "heatzones" && styles.activeHeatzoneTabText
-          ]}>
-            Heatzones
-          </Text>
+          <Text style={[styles.tabText, activeTab === "heatzones" && styles.activeHeatzoneTabText]}>Heatzones</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Animated Content */}
+      {/* Content */}
       <Animated.View style={{ flex: 1, opacity }}>
         {activeTab === "nearby" ? (
           nearbyPeople.length === 0 ? (
@@ -102,11 +78,7 @@ export default function NearbyPeopleList({ people, onUserSelect }: Props) {
                     </View>
                     <View>
                       <Text style={styles.name}>{item.id}</Text>
-                      <Text style={styles.distance}>
-                        {item.distance !== undefined
-                          ? `${(item.distance * 1000).toFixed(0)} meters away`
-                          : "Distance unknown"}
-                      </Text>
+                      <Text style={styles.distance}>{(item.distance! * 1000).toFixed(0)} meters away</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -114,9 +86,27 @@ export default function NearbyPeopleList({ people, onUserSelect }: Props) {
             />
           )
         ) : (
-          <View style={styles.heatzoneContainer}>
-            <Text style={styles.heatzoneText}>Heatzones will be listed here 🔥</Text>
-          </View>
+          heatzonePeople.length === 0 ? (
+            <Text style={styles.noPeopleText}>No heatzones detected.</Text>
+          ) : (
+            <FlatList
+              data={heatzonePeople}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.heatzoneBox} onPress={() => {}}>
+                  <View style={styles.row}>
+                    <View style={styles.heatzoneAvatar}>
+                      <Ionicons name="location-outline" size={24} color="#fff" />
+                    </View>
+                    <View>
+                      <Text style={styles.name}>Zone {item.id}</Text>
+                      <Text style={styles.distance}>{(item.distance! * 1000).toFixed(0)} meters away</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          )
         )}
       </Animated.View>
     </View>
@@ -130,40 +120,38 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: "row",
     marginBottom: 10,
+    paddingHorizontal: 10,
+    alignItems: "center",
   },
   tabButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#202020",
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    marginHorizontal: 4,
-  },
-  leftTab: {
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
-  },
-  rightTab: {
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
+    marginRight: 10,
   },
   activeNearbyTab: {
     backgroundColor: "#CCFF33",
   },
   activeHeatzoneTab: {
-    backgroundColor: "#ff1f00",
+    backgroundColor: "#ff3333",
   },
   tabText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 14,
   },
   activeNearbyTabText: {
     color: "#202020",
+    marginLeft: 5,
   },
   activeHeatzoneTabText: {
     color: "#202020",
+    marginLeft: 5,
+  },
+  icon: {
+    marginRight: 6,
   },
   row: {
     flexDirection: "row",
@@ -189,6 +177,26 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 10,
   },
+  heatzoneBox: {
+    backgroundColor: "#400000",
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  heatzoneAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#ff3333",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  heatzoneAvatarText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
   name: {
     color: "#CCFF33",
     fontWeight: "bold",
@@ -201,15 +209,5 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     textAlign: "center",
     marginTop: 20,
-  },
-  heatzoneContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
-  heatzoneText: {
-    color: "#CCFF33",
-    fontSize: 16,
-    fontWeight: "bold",
   },
 });
