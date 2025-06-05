@@ -4,6 +4,7 @@ import MapView, { Marker, Circle } from "react-native-maps";
 
 type User = {
   id: string;
+  name: string;
   latitude: number;
   longitude: number;
 };

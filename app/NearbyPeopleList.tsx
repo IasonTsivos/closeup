@@ -4,24 +4,26 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 
 type User = {
   id: string;
+  name: string;
   latitude: number;
   longitude: number;
   distance?: number;
 };
 
 type Props = {
-  people: User[];
+  people: User[]; // nearby + heatzones combined, maybe
+  connections: User[]; // new prop for connected users
   onUserSelect: (user: User) => void;
 };
 
-export default function NearbyPeopleList({ people, onUserSelect }: Props) {
-  const [activeTab, setActiveTab] = useState<"nearby" | "heatzones">("nearby");
+export default function NearbyPeopleList({ people, connections, onUserSelect }: Props) {
+  const [activeTab, setActiveTab] = useState<"nearby" | "heatzones" | "connections">("nearby");
   const opacity = useRef(new Animated.Value(1)).current;
 
   const nearbyPeople = people.filter(user => user.distance !== undefined && user.distance <= 0.5);
   const heatzonePeople = people.filter(user => user.distance !== undefined && user.distance > 0.5);
 
-  const handleTabSwitch = (tab: "nearby" | "heatzones") => {
+  const handleTabSwitch = (tab: "nearby" | "heatzones" | "connections") => {
     Animated.sequence([
       Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }),
       Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }),
@@ -31,7 +33,7 @@ export default function NearbyPeopleList({ people, onUserSelect }: Props) {
 
   return (
     <View style={styles.container}>
-      
+
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
@@ -59,6 +61,20 @@ export default function NearbyPeopleList({ people, onUserSelect }: Props) {
           />
           <Text style={[styles.tabText, activeTab === "heatzones" && styles.activeHeatzoneTabText]}>Heatzones</Text>
         </TouchableOpacity>
+
+        {/* New Connections Tab */}
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === "connections" && styles.activeConnectionsTab]}
+          onPress={() => handleTabSwitch("connections")}
+        >
+          <Ionicons
+            name="link-outline"
+            size={18}
+            color={activeTab === "connections" ? "#202020" : "#fff"}
+            style={styles.icon}
+          />
+          <Text style={[styles.tabText, activeTab === "connections" && styles.activeConnectionsTabText]}>Connections</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Content */}
@@ -74,10 +90,10 @@ export default function NearbyPeopleList({ people, onUserSelect }: Props) {
                 <TouchableOpacity style={styles.personBox} onPress={() => onUserSelect(item)}>
                   <View style={styles.row}>
                     <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>{item.id.charAt(0).toUpperCase()}</Text>
+                      <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
                     </View>
                     <View>
-                      <Text style={styles.name}>{item.id}</Text>
+                      <Text style={styles.name}>{item.name}</Text>
                       <Text style={styles.distance}>{(item.distance! * 1000).toFixed(0)} meters away</Text>
                     </View>
                   </View>
@@ -85,7 +101,7 @@ export default function NearbyPeopleList({ people, onUserSelect }: Props) {
               )}
             />
           )
-        ) : (
+        ) : activeTab === "heatzones" ? (
           heatzonePeople.length === 0 ? (
             <Text style={styles.noPeopleText}>No heatzones detected.</Text>
           ) : (
@@ -101,6 +117,32 @@ export default function NearbyPeopleList({ people, onUserSelect }: Props) {
                     <View>
                       <Text style={styles.name}>Zone {item.id}</Text>
                       <Text style={styles.distance}>{(item.distance! * 1000).toFixed(0)} meters away</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          )
+        ) : (
+          // Connections Tab
+          connections.length === 0 ? (
+            <Text style={styles.noPeopleText}>No connections found.</Text>
+          ) : (
+            <FlatList
+              data={connections}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.personBox} onPress={() => onUserSelect(item)}>
+                  <View style={styles.row}>
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.name}>{item.name}</Text>
+                      {/* You can optionally display distance if available */}
+                      {item.distance !== undefined && (
+                        <Text style={styles.distance}>{(item.distance * 1000).toFixed(0)} meters away</Text>
+                      )}
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -138,6 +180,9 @@ const styles = StyleSheet.create({
   activeHeatzoneTab: {
     backgroundColor: "#ff3333",
   },
+  activeConnectionsTab: {
+    backgroundColor: "#3399FF",
+  },
   tabText: {
     color: "#fff",
     fontWeight: "bold",
@@ -147,6 +192,10 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   activeHeatzoneTabText: {
+    color: "#202020",
+    marginLeft: 5,
+  },
+  activeConnectionsTabText: {
     color: "#202020",
     marginLeft: 5,
   },
@@ -191,11 +240,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
-  },
-  heatzoneAvatarText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
   },
   name: {
     color: "#CCFF33",

@@ -14,28 +14,36 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNavBar from "@/components/BottomNavBar";
-import { doc, setDoc, serverTimestamp, collection, onSnapshot, getDoc } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  onSnapshot,
+  getDoc,
+  getDocs,
+} from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { getUserId } from "./utils/userId";
 import NearbyPeopleList from "./NearbyPeopleList";
-import { fetchNearbyUsers, UserLocation } from "./utils/fetchNearbyUsers"; 
+import { fetchNearbyUsers, UserLocation } from "./utils/fetchNearbyUsers";
 import { styles as externalStyles } from "./utils/MapScreen.styles"; // your other styles
-import { LinearGradient } from 'expo-linear-gradient';
-import { Linking } from 'react-native';
-
+import { LinearGradient } from "expo-linear-gradient";
+import { Linking } from "react-native";
 
 export default function MapScreen() {
   const navigation = useNavigation();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [loading, setLoading] = useState(true);
   const [nearbyPeople, setNearbyPeople] = useState<UserLocation[]>([]);
+  const [connections, setConnections] = useState<UserLocation[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null);
   const [selectedUserData, setSelectedUserData] = useState<any | null>(null);
   const [fetchingUserData, setFetchingUserData] = useState<boolean>(false);
   const [profileViews, setProfileViews] = useState<number>(0);
 
   const handleExitButtonPress = (username: string) => {
-    const instagramUrl = `https://www.instagram.com/${username}/`; 
+    const instagramUrl = `https://www.instagram.com/${username}/`;
     Linking.openURL(instagramUrl).catch((err) => {
       console.error("Error opening Instagram:", err);
     });
@@ -50,12 +58,43 @@ export default function MapScreen() {
     }
   };
 
+  const fetchConnections = async () => {
+    try {
+      const userId = await getUserId();
+      const connectionsSnapshot = await getDocs(
+        collection(db, `users/${userId}/connections`)
+      );
+      const connectedUsers: UserLocation[] = [];
+
+      connectionsSnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (
+          data.latitude !== undefined &&
+          data.longitude !== undefined &&
+          data.name !== undefined
+        ) {
+          connectedUsers.push({
+            id: docSnap.id,
+            name: data.name,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            distance: data.distance,
+          });
+        }
+      });
+
+      setConnections(connectedUsers);
+    } catch (error) {
+      console.error("Error fetching connections:", error);
+    }
+  };
+
   const fetchSelectedUserData = async (userId: string) => {
     setFetchingUserData(true);
     try {
       const userRef = doc(db, "users", userId);
       const docSnap = await getDoc(userRef);
-  
+
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (typeof data.profileViews === "number") setProfileViews(data.profileViews);
@@ -65,7 +104,7 @@ export default function MapScreen() {
           { profileViews: currentViews + 1 },
           { merge: true }
         );
-  
+
         setSelectedUserData({ ...data, profileViews: currentViews + 1 });
       } else {
         console.error("User not found");
@@ -78,7 +117,7 @@ export default function MapScreen() {
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-  
+
     const startLocationFlow = async () => {
       try {
         const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
@@ -86,7 +125,7 @@ export default function MapScreen() {
           alert("Foreground location permission is required.");
           return;
         }
-  
+
         if (Platform.OS !== "web") {
           try {
             const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
@@ -97,12 +136,12 @@ export default function MapScreen() {
             console.warn("Background location permission not supported:", bgErr);
           }
         }
-  
+
         const id = await getUserId();
         const initialLoc = await Location.getCurrentPositionAsync({});
         setLocation(initialLoc);
         setLoading(false);
-  
+
         await setDoc(
           doc(db, "liveLocations", id),
           {
@@ -112,7 +151,7 @@ export default function MapScreen() {
           },
           { merge: true }
         );
-  
+
         interval = setInterval(async () => {
           try {
             const loc = await Location.getCurrentPositionAsync({});
@@ -130,10 +169,11 @@ export default function MapScreen() {
             console.error("Error updating location:", err);
           }
         }, 90000);
-  
-        // Fetch nearby users here, after the location has been set
-        await fetchNearbyPeople();  // Ensure you fetch after setting location
-  
+
+        // Fetch data after location is set
+        await fetchNearbyPeople();
+        await fetchConnections();
+
         // Listen to location updates in real-time
         onSnapshot(collection(db, "liveLocations"), fetchNearbyPeople);
       } catch (err) {
@@ -141,14 +181,13 @@ export default function MapScreen() {
         setLoading(false);
       }
     };
-  
+
     startLocationFlow();
-  
+
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, []); // Empty array means this runs once on mount
-  
+  }, []);
 
   const handleUserSelect = (user: UserLocation) => {
     setSelectedUser(user);
@@ -161,8 +200,13 @@ export default function MapScreen() {
   };
 
   if (loading || !location || nearbyPeople.length === 0) {
-    return <ActivityIndicator size="large" style={{ flex: 1, backgroundColor: "#505050" }} />;
-  }  
+    return (
+      <ActivityIndicator
+        size="large"
+        style={{ flex: 1, backgroundColor: "#505050" }}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -174,7 +218,10 @@ export default function MapScreen() {
           onUserSelect={handleUserSelect}
         />
         <Text style={styles.appTitle}>CloseUp</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
           <Ionicons name="arrow-back" size={24} color="#303030" />
         </TouchableOpacity>
       </View>
@@ -186,50 +233,70 @@ export default function MapScreen() {
               <Ionicons name="eye-outline" size={20} color="#CCFF33" />
               <Text style={styles.viewsText}>{profileViews}</Text>
             </View>
-            <TouchableOpacity style={styles.backButton2} onPress={handleBackToList}>
+            <TouchableOpacity
+              style={styles.backButton2}
+              onPress={handleBackToList}
+            >
               <Ionicons name="arrow-back" size={24} color="#303030" />
             </TouchableOpacity>
             {fetchingUserData ? (
               <ActivityIndicator size="large" color="#CCFF33" />
             ) : (
-            <View style={styles.userDetails}>
+              <View style={styles.userDetails}>
                 <LinearGradient
                   colors={[
-                    "rgba(255, 214, 0, 0.8)",  // "#ffd600" but 60% opacity
-                    "rgba(230, 104, 60, 0.8)", // "#e6683c"
-                    "rgba(220, 39, 67, 0.8)",  // "#dc2743"
-                    "rgba(211, 0, 197, 0.8)",  // "#d300c5"
-                    "rgba(118, 56, 250, 0.8)", // "#7638fa"
+                    "rgba(255, 214, 0, 0.8)",
+                    "rgba(230, 104, 60, 0.8)",
+                    "rgba(220, 39, 67, 0.8)",
+                    "rgba(211, 0, 197, 0.8)",
+                    "rgba(118, 56, 250, 0.8)",
                   ]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.instagramBadge}
                 >
+                  <Ionicons
+                    name="logo-instagram"
+                    size={28}
+                    color="#fff"
+                    style={{ marginRight: 8 }}
+                  />
 
-                <Ionicons name="logo-instagram" size={28} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.username}>
+                    @{selectedUserData?.name || "Unknown User"}
+                  </Text>
 
-                <Text style={styles.username}>
-                  @{selectedUserData?.name || "Unknown User"}
-                </Text>
-
-                <TouchableOpacity onPress={() => handleExitButtonPress(selectedUserData?.name)}>
-                  <Ionicons name="open-outline" size={24} color="#fff" style={{ marginLeft: 8 }} />
-                </TouchableOpacity>
-              </LinearGradient>
+                  <TouchableOpacity
+                    onPress={() => handleExitButtonPress(selectedUserData?.name)}
+                  >
+                    <Ionicons
+                      name="open-outline"
+                      size={24}
+                      color="#fff"
+                      style={{ marginLeft: 8 }}
+                    />
+                  </TouchableOpacity>
+                </LinearGradient>
 
                 <Text style={styles.userInterestsTitle}>Interests:</Text>
                 <View style={styles.userInterests}>
-                  {selectedUserData?.interests?.map((interest: string, index: number) => (
-                    <View key={index} style={styles.interestPill}>
-                      <Text style={styles.interestText}>{interest}</Text>
-                    </View>
-                  ))}
+                  {selectedUserData?.interests?.map(
+                    (interest: string, index: number) => (
+                      <View key={index} style={styles.interestPill}>
+                        <Text style={styles.interestText}>{interest}</Text>
+                      </View>
+                    )
+                  )}
                 </View>
               </View>
             )}
           </View>
         ) : (
-          <NearbyPeopleList people={nearbyPeople} onUserSelect={handleUserSelect} />
+          <NearbyPeopleList
+            people={nearbyPeople}
+            connections={connections} // <-- added connections prop
+            onUserSelect={handleUserSelect}
+          />
         )}
       </SafeAreaView>
 
@@ -238,9 +305,7 @@ export default function MapScreen() {
   );
 }
 
-
 // Merge your original styles + new ones here:
 const styles = {
   ...externalStyles,
-
 };

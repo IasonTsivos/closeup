@@ -2,6 +2,8 @@ import React from "react";
 import { Platform, View, StyleSheet } from "react-native";
 import MapView, { Marker, Circle } from "react-native-maps";
 import { getDistance } from "./location"; // adjust path
+import { UserLocation } from "../../app/utils/fetchNearbyUsers"; // adjust path if needed
+
 
 type User = {
   id: string;
@@ -18,7 +20,7 @@ export default function MapViewWrapper({
   latitude: number;
   longitude: number;
   users?: User[];
-  onUserSelect?: (user: User) => void;
+  onUserSelect: (user: UserLocation) => void;
 }) {
   const NEARBY_RADIUS = 500;
 
@@ -57,7 +59,12 @@ export default function MapViewWrapper({
             coordinate={{ latitude: user.latitude, longitude: user.longitude }}
             title={`User: ${user.id}`}
             pinColor="blue"
-            onPress={() => onUserSelect?.(user)}
+            onPress={() =>
+              onUserSelect?.({
+                ...user,
+                name: user.id // or provide a default/fetched name if available
+              })
+            }
           />
         ))}
 

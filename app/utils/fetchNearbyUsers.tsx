@@ -1,17 +1,18 @@
 import * as Location from "expo-location";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../firebaseConfig"; 
-import { getUserId } from "./userId"; 
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { db } from "../../firebaseConfig";
+import { getUserId } from "./userId";
 
 export type UserLocation = {
   id: string;
+  name: string;
   latitude: number;
   longitude: number;
   distance?: number;
 };
 
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Radius of Earth in km
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
@@ -26,14 +27,20 @@ function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon
 
 export const fetchNearbyUsers = async (): Promise<UserLocation[]> => {
   const currentLoc = await Location.getCurrentPositionAsync({});
-  const userId = await getUserId();
+  const currentUserId = await getUserId();
 
   const snapshot = await getDocs(collection(db, "liveLocations"));
   const people: UserLocation[] = [];
 
-  snapshot.forEach((docSnap) => {
+  for (const docSnap of snapshot.docs) {
     const data = docSnap.data();
-    if (data.latitude && data.longitude && docSnap.id !== userId) {
+    const userId = docSnap.id;
+
+    if (
+      data.latitude &&
+      data.longitude &&
+      userId !== currentUserId
+    ) {
       const distance = getDistanceFromLatLonInKm(
         currentLoc.coords.latitude,
         currentLoc.coords.longitude,
@@ -41,14 +48,28 @@ export const fetchNearbyUsers = async (): Promise<UserLocation[]> => {
         data.longitude
       );
 
+      let name: string;
+
+      if (typeof data.name === "string") {
+        name = data.name;
+      } else {
+        // fallback: fetch name from users/[id]
+        const userDocRef = doc(db, "users", userId);
+        const userDoc = await getDoc(userDocRef);
+        name = userDoc.exists() && userDoc.data().name
+          ? userDoc.data().name
+          : "Unknown";
+      }
+
       people.push({
-        id: docSnap.id,
+        id: userId,
+        name,
         latitude: data.latitude,
         longitude: data.longitude,
         distance,
       });
     }
-  });
+  }
 
   return people;
 };
