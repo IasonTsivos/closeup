@@ -77,7 +77,7 @@ export default function MapScreen() {
   };
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
   
     const startLocationFlow = async () => {
       try {
