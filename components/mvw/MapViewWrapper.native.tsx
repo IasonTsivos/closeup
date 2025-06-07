@@ -1,6 +1,12 @@
-import React from "react";
-import { StyleSheet, View, Text, Image } from "react-native";
-import MapView, { Marker, Circle } from "react-native-maps";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  StyleSheet,
+  View,
+  Text,
+  Image,
+  Dimensions,
+} from "react-native";
+import MapView, { Marker, Circle, Region } from "react-native-maps";
 
 type User = {
   id: string;
@@ -17,6 +23,12 @@ type Props = {
 };
 
 const RADIUS_METERS = 500;
+const CLUSTER_DISTANCE_METERS = 300;
+
+const MIN_BADGE_SIZE = 5;
+const MAX_BADGE_SIZE = 40;
+const MIN_FONT_SIZE = 5;
+const MAX_FONT_SIZE = 32;
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3; // meters
@@ -35,27 +47,119 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   return R * c;
 }
 
-export default function MapViewWrapper({ latitude, longitude, users = [], onUserSelect }: Props) {
+function clusterUsers(users: User[], distanceMeters: number): User[][] {
+  const clusters: User[][] = [];
+
+  users.forEach(user => {
+    let added = false;
+    for (const cluster of clusters) {
+      if (
+        cluster.some(cUser =>
+          getDistance(cUser.latitude, cUser.longitude, user.latitude, user.longitude) <= distanceMeters
+        )
+      ) {
+        cluster.push(user);
+        added = true;
+        break;
+      }
+    }
+    if (!added) {
+      clusters.push([user]);
+    }
+  });
+
+  return clusters;
+}
+
+function getClusterCenter(cluster: User[]) {
+  const latitude =
+    cluster.reduce((sum, user) => sum + user.latitude, 0) / cluster.length;
+  const longitude =
+    cluster.reduce((sum, user) => sum + user.longitude, 0) / cluster.length;
+  return { latitude, longitude };
+}
+
+// Interpolate badge size and font size based on map zoom level (latitudeDelta)
+function interpolateSize(delta: number) {
+  const minDelta = 0.005;
+  const maxDelta = 0.05;
+  const t = Math.min(Math.max((delta - minDelta) / (maxDelta - minDelta), 0), 1);
+  const size = MAX_BADGE_SIZE - t * (MAX_BADGE_SIZE - MIN_BADGE_SIZE);
+  const fontSize = MAX_FONT_SIZE - t * (MAX_FONT_SIZE - MIN_FONT_SIZE);
+  return { size, fontSize };
+}
+
+export default function MapViewWrapper({
+  latitude,
+  longitude,
+  users = [],
+  onUserSelect,
+}: Props) {
+  const [region, setRegion] = useState<Region>({
+    latitude,
+    longitude,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
+
+  // Filter nearby users inside RADIUS_METERS
   const nearbyUsers = users.filter(
     user =>
       getDistance(latitude, longitude, user.latitude, user.longitude) <= RADIUS_METERS
   );
 
+  // Distant users outside RADIUS_METERS
   const distantUsers = users.filter(
     user =>
       getDistance(latitude, longitude, user.latitude, user.longitude) > RADIUS_METERS
   );
 
+  // Cluster distant users by 300m distance
+  const clusters = clusterUsers(distantUsers, CLUSTER_DISTANCE_METERS);
+
+  // Filter out clusters with only one user (no cluster for single users)
+  const filteredClusters = clusters.filter(cluster => cluster.length > 1);
+
+  // For rendering cluster badges, we need to convert cluster centers to screen coordinates
+  const [clusterPositions, setClusterPositions] = useState<
+    { x: number; y: number; count: number; key: string }[]
+  >([]);
+
+  const mapRef = useRef<MapView>(null);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Get coordinates of cluster centers
+    const clusterCenters = filteredClusters.map(cluster => getClusterCenter(cluster));
+
+    // Project to screen points
+    Promise.all(
+      clusterCenters.map(
+        center =>
+          new Promise<{ x: number; y: number }>((resolve) => {
+            mapRef.current?.pointForCoordinate(center).then(resolve);
+          })
+      )
+    ).then(points => {
+      const positions = points.map((point, i) => ({
+        x: point.x,
+        y: point.y,
+        count: filteredClusters[i].length,
+        key: `cluster-${i}`,
+      }));
+      setClusterPositions(positions);
+    });
+  }, [region, filteredClusters]);
+
   return (
     <View style={styles.container}>
       <MapView
+        ref={mapRef}
         style={StyleSheet.absoluteFillObject}
-        initialRegion={{
-          latitude,
-          longitude,
-          latitudeDelta: 0.01, // Adjust the zoom level if necessary
-          longitudeDelta: 0.01, // Adjust the zoom level if necessary
-        }}
+        initialRegion={region}
+        region={region}
+        onRegionChangeComplete={setRegion}
         showsUserLocation={false}
         showsMyLocationButton={false}
       >
@@ -86,7 +190,7 @@ export default function MapViewWrapper({ latitude, longitude, users = [], onUser
             title={`User: ${user.id}`}
             pinColor="blue"
             onPress={() => onUserSelect?.(user)}
-            zIndex={1} // Ensure the nearby pins are above the map
+            zIndex={1}
           >
             <View style={[styles.customPin, styles.nearbyPin]}>
               <Text style={styles.pinText}>{user.id.charAt(0).toUpperCase()}</Text>
@@ -94,17 +198,44 @@ export default function MapViewWrapper({ latitude, longitude, users = [], onUser
           </Marker>
         ))}
 
-        {/* Distant users (render heat markers) */}
-        {distantUsers.map(user => (
-          <Circle
-            key={`heat-${user.id}`}
-            center={{ latitude: user.latitude, longitude: user.longitude }}
-            radius={100}
-            strokeColor="rgba(255,0,0,0.5)"
-            fillColor="rgba(255,0,0,0.2)"
-          />
-        ))}
+        {/* Heatzones for clusters */}
+        {filteredClusters.map((cluster, idx) => {
+          const center = getClusterCenter(cluster);
+          return (
+            <Circle
+              key={`heatzone-${idx}`}
+              center={center}
+              radius={150} // smaller radius as requested
+              strokeColor="rgba(255,0,0,0.25)"
+              fillColor="rgba(255,0,0,0.2)"
+            />
+          );
+        })}
       </MapView>
+
+      {/* Cluster count badges */}
+      {clusterPositions.map(({ x, y, count, key }) => {
+        const { size, fontSize } = interpolateSize(region.latitudeDelta);
+
+        return (
+          <View
+            key={key}
+            style={[
+              styles.clusterBadge,
+              {
+                width: size,
+                height: size,
+                borderRadius: size / 2,
+                left: x - size / 2,
+                top: y - size / 2,
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <Text style={[styles.clusterText, { fontSize }]}>{count}</Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -136,9 +267,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#3388FF", // Blue background for the custom pin
+    backgroundColor: "#3388FF",
     borderWidth: 2,
-    borderColor: "#CCFF33", // White border for the pin
+    borderColor: "#CCFF33",
   },
   pinText: {
     color: "#CCFF33",
@@ -146,6 +277,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   nearbyPin: {
-    backgroundColor: "#303030", // Change this color if needed
+    backgroundColor: "#303030",
+  },
+  clusterBadge: {
+    position: "absolute",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  clusterText: {
+    color: "rgba(255,0,0,0.8)",
   },
 });
