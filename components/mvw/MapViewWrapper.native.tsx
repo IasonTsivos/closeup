@@ -24,7 +24,7 @@ type Props = {
   onUserSelect?: (user: User) => void;
 };
 
-const RADIUS_METERS = 200;
+const RADIUS_METERS = 100;
 const CLUSTER_DISTANCE_METERS = 300;
 
 const MIN_BADGE_SIZE = 15;
