@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from "react";
 import {
   View,
-  StyleSheet,
   ActivityIndicator,
-  Dimensions,
   TouchableOpacity,
   Text,
   Platform,
+  Linking,
 } from "react-native";
 import * as Location from "expo-location";
-import MapViewWrapper from "../components/mvw/MapViewWrapper";
+import MapViewWrapper from "../components/mvw/MapViewWrapper"; // your updated wrapper
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -26,12 +25,9 @@ import {
 import { db } from "../firebaseConfig";
 import { getUserId } from "./utils/userId";
 import NearbyPeopleList from "./NearbyPeopleList";
-import { fetchNearbyUsers, UserLocation } from "./utils/fetchNearbyUsers";
-import { styles as externalStyles } from "./utils/MapScreen.styles"; 
+import { UserLocation } from "./utils/fetchNearbyUsers";
+import { styles as externalStyles } from "./utils/MapScreen.styles";
 import { LinearGradient } from "expo-linear-gradient";
-import { Linking } from "react-native";
-
-
 
 export default function MapScreen() {
   const navigation = useNavigation();
@@ -44,20 +40,32 @@ export default function MapScreen() {
   const [fetchingUserData, setFetchingUserData] = useState<boolean>(false);
   const [profileViews, setProfileViews] = useState<number>(0);
 
+  // Calculate distance between two lat/lng points (Haversine formula)
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const R = 6371; // km
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   const handleExitButtonPress = (username: string) => {
     const instagramUrl = `https://www.instagram.com/${username}/`;
     Linking.openURL(instagramUrl).catch((err) => {
       console.error("Error opening Instagram:", err);
     });
-  };
-
-  const fetchNearbyPeople = async () => {
-    try {
-      const people = await fetchNearbyUsers();
-      setNearbyPeople(people);
-    } catch (err) {
-      console.error("Error fetching nearby users:", err);
-    }
   };
 
   const fetchConnections = async () => {
@@ -99,7 +107,8 @@ export default function MapScreen() {
 
       if (docSnap.exists()) {
         const data = docSnap.data();
-        if (typeof data.profileViews === "number") setProfileViews(data.profileViews);
+        if (typeof data.profileViews === "number")
+          setProfileViews(data.profileViews);
         const currentViews = data.profileViews || 0;
         await setDoc(
           userRef,
@@ -122,6 +131,7 @@ export default function MapScreen() {
 
     const startLocationFlow = async () => {
       try {
+        const userId = await getUserId();
         const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
         if (fgStatus !== "granted") {
           alert("Foreground location permission is required.");
@@ -172,22 +182,52 @@ export default function MapScreen() {
           }
         }, 90000);
 
-        // Fetch data after location is set
-        await fetchNearbyPeople();
+        // Fetch connections once on mount
         await fetchConnections();
 
-        // Listen to location updates in real-time
-        onSnapshot(collection(db, "liveLocations"), fetchNearbyPeople);
+        // Listen to location updates in real-time and update nearbyPeople
+          const unsubscribe = onSnapshot(collection(db, "liveLocations"), (snapshot) => {
+          const users: UserLocation[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const docId = docSnap.id;
+            if (
+              typeof data.latitude === "number" &&
+              typeof data.longitude === "number" &&
+              docId !== userId // <-- Exclude yourself here
+            ) {
+              const distance = calculateDistance(
+                initialLoc.coords.latitude,
+                initialLoc.coords.longitude,
+                data.latitude,
+                data.longitude
+              );
+              users.push({
+                id: docId,
+                name: docId, // or fetch name if available
+                latitude: data.latitude,
+                longitude: data.longitude,
+                distance,
+              });
+            }
+          });
+          setNearbyPeople(users);
+        });
+
+        return unsubscribe;
       } catch (err) {
         console.error("Error starting location flow:", err);
         setLoading(false);
       }
     };
 
-    startLocationFlow();
+    const cleanupPromise = startLocationFlow();
 
     return () => {
       if (interval) clearInterval(interval);
+      cleanupPromise.then((unsubscribe) => {
+        if (typeof unsubscribe === "function") unsubscribe();
+      });
     };
   }, []);
 
@@ -269,7 +309,9 @@ export default function MapScreen() {
                   </Text>
 
                   <TouchableOpacity
-                    onPress={() => handleExitButtonPress(selectedUserData?.name)}
+                    onPress={() =>
+                      handleExitButtonPress(selectedUserData?.name)
+                    }
                   >
                     <Ionicons
                       name="open-outline"
@@ -296,7 +338,7 @@ export default function MapScreen() {
         ) : (
           <NearbyPeopleList
             people={nearbyPeople}
-            connections={connections} // <-- added connections prop
+            connections={connections}
             onUserSelect={handleUserSelect}
           />
         )}
@@ -307,7 +349,6 @@ export default function MapScreen() {
   );
 }
 
-// Merge your original styles + new ones here:
 const styles = {
   ...externalStyles,
 };

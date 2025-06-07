@@ -1,12 +1,14 @@
-//mapview-wrapper.native.tsx
+// mapviewwrapper.native.tsx
 import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   View,
   Text,
-  Image,
+  Platform,
+  PermissionsAndroid,
 } from "react-native";
 import MapView, { Marker, Circle, Region } from "react-native-maps";
+import * as Location from "expo-location";
 
 type User = {
   id: string;
@@ -22,7 +24,7 @@ type Props = {
   onUserSelect?: (user: User) => void;
 };
 
-const RADIUS_METERS = 500;
+const RADIUS_METERS = 200;
 const CLUSTER_DISTANCE_METERS = 300;
 
 const MIN_BADGE_SIZE = 15;
@@ -94,6 +96,13 @@ export default function MapViewWrapper({
   users = [],
   onUserSelect,
 }: Props) {
+  // State to track user's live location
+  const [currentPosition, setCurrentPosition] = useState<{ latitude: number; longitude: number }>({
+    latitude,
+    longitude,
+  });
+
+  // Map region state, initialized at currentPosition
   const [region, setRegion] = useState<Region>({
     latitude,
     longitude,
@@ -101,30 +110,64 @@ export default function MapViewWrapper({
     longitudeDelta: 0.01,
   });
 
-  // Filter nearby users inside RADIUS_METERS
+  const mapRef = useRef<MapView>(null);
+
+  // Request location permissions & start watching location updates using expo-location
+  useEffect(() => {
+    let subscriber: Location.LocationSubscription | null = null;
+
+    async function requestPermissionAndWatch() {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.warn('Location permission denied');
+        return;
+      }
+
+      subscriber = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          distanceInterval: 10, // meters
+          timeInterval: 5000, // milliseconds
+        },
+        (location) => {
+          const { latitude: newLat, longitude: newLon } = location.coords;
+          setCurrentPosition({ latitude: newLat, longitude: newLon });
+          setRegion(prev => ({
+            ...prev,
+            latitude: newLat,
+            longitude: newLon,
+          }));
+        }
+      );
+    }
+
+    requestPermissionAndWatch();
+
+    return () => {
+      if (subscriber) {
+        subscriber.remove();
+      }
+    };
+  }, []);
+
+  // Filter users by distance from currentPosition (not props latitude/longitude)
   const nearbyUsers = users.filter(
     user =>
-      getDistance(latitude, longitude, user.latitude, user.longitude) <= RADIUS_METERS
+      getDistance(currentPosition.latitude, currentPosition.longitude, user.latitude, user.longitude) <= RADIUS_METERS
   );
 
-  // Distant users outside RADIUS_METERS
   const distantUsers = users.filter(
     user =>
-      getDistance(latitude, longitude, user.latitude, user.longitude) > RADIUS_METERS
+      getDistance(currentPosition.latitude, currentPosition.longitude, user.latitude, user.longitude) > RADIUS_METERS
   );
 
-  // Cluster distant users by 300m distance
   const clusters = clusterUsers(distantUsers, CLUSTER_DISTANCE_METERS);
 
-  // Filter out clusters with only one user (no cluster for single users)
   const filteredClusters = clusters.filter(cluster => cluster.length > 1);
 
-  // For rendering cluster badges, convert cluster centers to screen coords
   const [clusterPositions, setClusterPositions] = React.useState<
     { x: number; y: number; count: number; key: string }[]
   >([]);
-
-  const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -164,21 +207,20 @@ export default function MapViewWrapper({
       >
         {/* Radius circle */}
         <Circle
-          center={{ latitude, longitude }}
+          center={currentPosition}
           radius={RADIUS_METERS}
           strokeColor="rgb(0, 166, 255)"
           fillColor="rgba(0, 123, 255, 0.25)"
         />
 
         {/* Your avatar */}
-        <Marker coordinate={{ latitude, longitude }}zIndex={999}>
+        <Marker coordinate={currentPosition} zIndex={999}>
           <View style={styles.userLocationMarker}>
             <View style={styles.userLocationInnerCircle} />
           </View>
         </Marker>
 
-
-        {/* Nearby users (custom pins with the starting letter) with dynamic size */}
+        {/* Nearby users */}
         {nearbyUsers.map(user => (
           <Marker
             key={user.id}
@@ -213,14 +255,14 @@ export default function MapViewWrapper({
           </Marker>
         ))}
 
-        {/* Heatzones for clusters */}
+        {/* Heat zones for clusters */}
         {filteredClusters.map((cluster, idx) => {
           const center = getClusterCenter(cluster);
           return (
             <Circle
               key={`heatzone-${idx}`}
               center={center}
-              radius={150} // smaller radius as requested
+              radius={150}
               strokeColor="rgba(255,0,0,0.5)"
               fillColor="rgba(255,0,0,0.2)"
             />
@@ -299,21 +341,19 @@ const styles = StyleSheet.create({
     fontWeight: "300",
   },
   userLocationMarker: {
-  width: 45,           // from 30 to 45
-  height: 45,
-  borderRadius: 22.5,  // half of width/height
-  backgroundColor: "rgba(0, 122, 255, 0.3)",
-  alignItems: "center",
-  justifyContent: "center",
-},
-userLocationInnerCircle: {
-  width: 22,           // from 15 to 22
-  height: 22,
-  borderRadius: 11,
-  backgroundColor: "#007AFF",
-  borderWidth: 2,
-  borderColor: "white",
-},
-
-
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    backgroundColor: "rgba(0, 122, 255, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  userLocationInnerCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#007AFF",
+    borderWidth: 2,
+    borderColor: "white",
+  },
 });
