@@ -27,9 +27,11 @@ import { db } from "../firebaseConfig";
 import { getUserId } from "./utils/userId";
 import NearbyPeopleList from "./NearbyPeopleList";
 import { fetchNearbyUsers, UserLocation } from "./utils/fetchNearbyUsers";
-import { styles as externalStyles } from "./utils/MapScreen.styles"; // your other styles
+import { styles as externalStyles } from "./utils/MapScreen.styles"; 
 import { LinearGradient } from "expo-linear-gradient";
 import { Linking } from "react-native";
+
+
 
 export default function MapScreen() {
   const navigation = useNavigation();

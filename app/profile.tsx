@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -60,70 +59,81 @@ export default function ProfileScreen() {
       { name, interests: selected },
       { merge: true }
     );
-    router.push("/map"); // 👈 Navigate to map screen
+    router.push("/map");
   };
-  
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Back button */}
       <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
         <Ionicons name="arrow-back" size={24} color="#303030" />
       </TouchableOpacity>
+      <TouchableOpacity
+          onPress={() => router.push("/settings")}
+          style={styles.settingsBtn}
+        >
+          <Ionicons name="settings-outline" size={24} color="#CCFF33" />
+        </TouchableOpacity>
 
-      <View style={styles.titleWrapper}>
-        <Ionicons name="sparkles-outline" size={24} color="#CCFF33" />
-        <Text style={styles.title}>Profile</Text>
-      </View>
+      <View style={styles.contentWrapper}>
+        <View style={styles.titleWrapper}>
+          <Ionicons name="sparkles-outline" size={24} color="#CCFF33" />
+          <Text style={styles.title}>Profile</Text>
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your name"
-        placeholderTextColor="#999"
-        value={name}
-        onChangeText={setName}
-      />
+        <TextInput
+          editable={false}
+          style={styles.input}
+          placeholder="Enter your name"
+          placeholderTextColor="#999"
+          value={name}
+          onChangeText={setName}
+        />
 
-      <Text style={styles.subTitle}>Select Interests</Text>
+        <Text style={styles.subTitle}>Select Interests</Text>
 
-      <ScrollView contentContainerStyle={styles.interestsWrapper}>
-        {INTERESTS.map(({ label, icon }) => {
-          const isActive = selected.includes(label);
-          return (
-            <TouchableOpacity
-              key={label}
-              onPress={() => toggleInterest(label)}
-              style={[
-                styles.pill,
-                { backgroundColor: isActive ? "#CCFF33" : "#333" },
-              ]}
-            >
-              <Ionicons
-                name={icon as any}
-                size={16}
-                color={isActive ? "#101010" : "#ccc"}
-                style={{ marginRight: 6 }}
-              />
-              <Text
-                style={[styles.pillText, { color: isActive ? "#101010" : "#ccc" }]}
+        <ScrollView
+          contentContainerStyle={styles.interestsWrapper}
+          showsVerticalScrollIndicator={false}
+        >
+          {INTERESTS.map(({ label, icon }) => {
+            const isActive = selected.includes(label);
+            return (
+              <TouchableOpacity
+                key={label}
+                onPress={() => toggleInterest(label)}
+                style={[
+                  styles.pill,
+                  { backgroundColor: isActive ? "#CCFF33" : "#333" },
+                ]}
               >
-                {label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+                <Ionicons
+                  name={icon as any}
+                  size={16}
+                  color={isActive ? "#101010" : "#ccc"}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={[
+                    styles.pillText,
+                    { color: isActive ? "#101010" : "#ccc" },
+                  ]}
+                >
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-      <View style={styles.profileViewsContainer}>
-        <Ionicons name="eye-outline" size={25} color="#CCFF33" />
-        <Text style={styles.profileViewsText}>
-          {profileViews || 0}
-        </Text>
+        <View style={styles.profileViewsContainer}>
+          <Ionicons name="eye-outline" size={25} color="#CCFF33" />
+          <Text style={styles.profileViewsText}>{profileViews || 0}</Text>
+        </View>
+
+        <TouchableOpacity onPress={saveProfile} style={styles.saveBtn}>
+          <Text style={styles.saveBtnText}>Save</Text>
+        </TouchableOpacity>
       </View>
-
-      <TouchableOpacity onPress={saveProfile} style={styles.saveBtn}>
-        <Text style={styles.saveBtnText}>Save</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -133,6 +143,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#101010",
     padding: 20,
+  },
+  contentWrapper: {
+    flex: 1,
+    justifyContent: "flex-start",      // changed from center to flex-start
+    alignItems: "center",
+    paddingTop: 60,                    // added some space from the top
   },
   backBtn: {
     position: "absolute",
@@ -146,9 +162,7 @@ const styles = StyleSheet.create({
   titleWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginTop: 60,
-    marginBottom: 20,
+    marginBottom: 30,                 // increased margin bottom for spacing between title & input
   },
   title: {
     fontSize: 28,
@@ -163,17 +177,23 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     marginBottom: 20,
+    width: 280,
   },
   subTitle: {
+    paddingTop: 10,
+    paddingBottom: 10,
     fontSize: 16,
     fontWeight: "bold",
     color: "#fff",
     marginBottom: 10,
+    // Removed alignSelf here to override in JSX inline styles
   },
   interestsWrapper: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "center",
     gap: 10,
+    marginBottom: 20,
   },
   pill: {
     flexDirection: "row",
@@ -191,24 +211,32 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 30,
+    width: 200,
   },
   saveBtnText: {
     fontWeight: "bold",
     fontSize: 16,
     color: "#101010",
   },
-  profileViewsContainer: {  // Fix to bottom
-    bottom: 20,            // Adjust position from bottom
-    left: 0,
-    right: 0,
-    justifyContent: "center",
-    alignItems: "center",
+  profileViewsContainer: {
     flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
   },
   profileViewsText: {
-    color: "#CCFF33",  // Green color for the text
+    color: "#CCFF33",
     marginLeft: 5,
     fontSize: 18,
   },
+  settingsBtn: {
+  position: "absolute",
+  top: 60,
+  right: 15,
+  backgroundColor: "transparent", // optional: remove if you want a background
+  padding: 10,
+  borderRadius: 20,
+  zIndex: 10,
+},
+
 });
+
