@@ -1,10 +1,10 @@
+//mapview-wrapper.native.tsx
 import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   View,
   Text,
   Image,
-  Dimensions,
 } from "react-native";
 import MapView, { Marker, Circle, Region } from "react-native-maps";
 
@@ -25,10 +25,10 @@ type Props = {
 const RADIUS_METERS = 500;
 const CLUSTER_DISTANCE_METERS = 300;
 
-const MIN_BADGE_SIZE = 5;
+const MIN_BADGE_SIZE = 15;
 const MAX_BADGE_SIZE = 40;
-const MIN_FONT_SIZE = 5;
-const MAX_FONT_SIZE = 32;
+const MIN_FONT_SIZE = 10;
+const MAX_FONT_SIZE = 22;
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3; // meters
@@ -79,7 +79,6 @@ function getClusterCenter(cluster: User[]) {
   return { latitude, longitude };
 }
 
-// Interpolate badge size and font size based on map zoom level (latitudeDelta)
 function interpolateSize(delta: number) {
   const minDelta = 0.005;
   const maxDelta = 0.05;
@@ -120,8 +119,8 @@ export default function MapViewWrapper({
   // Filter out clusters with only one user (no cluster for single users)
   const filteredClusters = clusters.filter(cluster => cluster.length > 1);
 
-  // For rendering cluster badges, we need to convert cluster centers to screen coordinates
-  const [clusterPositions, setClusterPositions] = useState<
+  // For rendering cluster badges, convert cluster centers to screen coords
+  const [clusterPositions, setClusterPositions] = React.useState<
     { x: number; y: number; count: number; key: string }[]
   >([]);
 
@@ -130,10 +129,8 @@ export default function MapViewWrapper({
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Get coordinates of cluster centers
     const clusterCenters = filteredClusters.map(cluster => getClusterCenter(cluster));
 
-    // Project to screen points
     Promise.all(
       clusterCenters.map(
         center =>
@@ -151,6 +148,8 @@ export default function MapViewWrapper({
       setClusterPositions(positions);
     });
   }, [region, filteredClusters]);
+
+  const { size: nearbyPinSize, fontSize: nearbyPinFontSize } = interpolateSize(region.latitudeDelta);
 
   return (
     <View style={styles.container}>
@@ -172,28 +171,44 @@ export default function MapViewWrapper({
         />
 
         {/* Your avatar */}
-        <Marker coordinate={{ latitude, longitude }}>
-          <View style={styles.customMarker}>
-            <Image
-              source={require("../../assets/avatar.png")}
-              style={styles.avatar}
-              resizeMode="cover"
-            />
+        <Marker coordinate={{ latitude, longitude }}zIndex={999}>
+          <View style={styles.userLocationMarker}>
+            <View style={styles.userLocationInnerCircle} />
           </View>
         </Marker>
 
-        {/* Nearby users (custom pins with the starting letter) */}
+
+        {/* Nearby users (custom pins with the starting letter) with dynamic size */}
         {nearbyUsers.map(user => (
           <Marker
             key={user.id}
             coordinate={{ latitude: user.latitude, longitude: user.longitude }}
-            title={`User: ${user.id}`}
+            title={`${user.name}`}
             pinColor="blue"
             onPress={() => onUserSelect?.(user)}
             zIndex={1}
           >
-            <View style={[styles.customPin, styles.nearbyPin]}>
-              <Text style={styles.pinText}>{user.id.charAt(0).toUpperCase()}</Text>
+            <View
+              style={[
+                styles.customPin,
+                styles.nearbyPin,
+                {
+                  width: nearbyPinSize,
+                  height: nearbyPinSize,
+                  borderRadius: nearbyPinSize / 2,
+                  borderColor: "#CCFF33",
+                  borderWidth: 2,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.pinText,
+                  { fontSize: nearbyPinFontSize },
+                ]}
+              >
+                {user.name.charAt(0)}
+              </Text>
             </View>
           </Marker>
         ))}
@@ -206,7 +221,7 @@ export default function MapViewWrapper({
               key={`heatzone-${idx}`}
               center={center}
               radius={150} // smaller radius as requested
-              strokeColor="rgba(255,0,0,0.25)"
+              strokeColor="rgba(255,0,0,0.5)"
               fillColor="rgba(255,0,0,0.2)"
             />
           );
@@ -228,6 +243,7 @@ export default function MapViewWrapper({
                 borderRadius: size / 2,
                 left: x - size / 2,
                 top: y - size / 2,
+                zIndex: 1,
               },
             ]}
             pointerEvents="none"
@@ -264,17 +280,11 @@ const styles = StyleSheet.create({
   customPin: {
     justifyContent: "center",
     alignItems: "center",
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     backgroundColor: "#3388FF",
-    borderWidth: 2,
-    borderColor: "#CCFF33",
   },
   pinText: {
     color: "#CCFF33",
-    fontWeight: "bold",
-    fontSize: 18,
+    fontWeight: "300",
   },
   nearbyPin: {
     backgroundColor: "#303030",
@@ -285,6 +295,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   clusterText: {
-    color: "rgba(255,0,0,0.8)",
+    color: "rgba(255,0,0,1)",
+    fontWeight: "300",
   },
+  userLocationMarker: {
+  width: 45,           // from 30 to 45
+  height: 45,
+  borderRadius: 22.5,  // half of width/height
+  backgroundColor: "rgba(0, 122, 255, 0.3)",
+  alignItems: "center",
+  justifyContent: "center",
+},
+userLocationInnerCircle: {
+  width: 22,           // from 15 to 22
+  height: 22,
+  borderRadius: 11,
+  backgroundColor: "#007AFF",
+  borderWidth: 2,
+  borderColor: "white",
+},
+
+
 });
