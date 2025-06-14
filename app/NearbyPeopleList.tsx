@@ -30,8 +30,8 @@ export default function NearbyPeopleList({ people, connections, onUserSelect }: 
   const { width } = useWindowDimensions();
   const opacity = useRef(new Animated.Value(1)).current;
 
-  const nearbyPeople = people.filter((user) => user.distance !== undefined && user.distance <= 0.5);
-  const heatzonePeople = people.filter((user) => user.distance !== undefined && user.distance > 0.5);
+  const nearbyPeople = people.filter((user) => user.distance !== undefined && user.distance <= 0.1);
+  const heatzonePeople = people.filter((user) => user.distance !== undefined && user.distance > 0.1);
 
   const tabKeys = ["nearby", "heatzones", "connections"] as const;
 
